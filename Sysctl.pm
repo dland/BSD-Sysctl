@@ -285,6 +285,12 @@ A short snippet demonstrating the problem, along with the expected
 and actual output, and the version of BSD::Sysctl used, will be
 appreciated.
 
+=head1 SEE ALSO
+
+L<BSD::Resource> - process resource limit and priority functions.
+
+L<IO::KQueue> - monitor changes on sockets, files, processes and signals.
+
 =head1 AUTHOR
 
 David Landgren.
