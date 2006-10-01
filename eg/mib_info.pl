@@ -10,14 +10,14 @@ use lib qw( blib/lib blib/arch );
 use BSD::Sysctl;
 
 for my $mib (@ARGV) {
-    if (BSD::Sysctl::_mib_exists($mib)) {
-        my $info = BSD::Sysctl::_mib_info($mib);
+    if (my $info = BSD::Sysctl::_mib_info($mib)) {
         print "info $mib => [@{[unpack('i i/i', $info)]}]\n";
     }
     else {
-        warn "no such mib: $mib\n";
+        warn "no such mib: $mib ($!)\n";
     }
 }
+exit;
 
 for my $k (sort keys %BSD::Sysctl::MIB_CACHE) {
     print "cache $k => [@{[unpack('i i/i', $BSD::Sysctl::MIB_CACHE{$k})]}]\n";

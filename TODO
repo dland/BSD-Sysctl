@@ -1,7 +1,5 @@
 TODO list for BSD::Sysctl
 
-1. Allow variables to be set.
-
 2. Permit the traversal (with iterators) of sysctl branches (e.g.
 'kern.*')
 
@@ -26,14 +24,6 @@ Or would an OO interface be less Clever?
 pagefree(), representing vm.vmtotal's "number of vm pages free"
 value.
 
-6. On FreeBSD, one may ask for a human-readable description of
-a sysctl variable, e.g.:
-
-  % sysctl -d kern.argmax
-  kern.argmax: Maximum bytes of argument to execve(2)
-
-This functionality should be supported.
-
 7. Deal with bsd-sysctl.pl in a cleverer way (insert the
 contents into Sysctl.pm when copying to blib/lib.
 
@@ -44,3 +34,5 @@ code has only been tweaked sufficiently to get the damned
 thing to compile. eg/mib_scan.pl reports that a number of more
 obscure variables are not fetched correctly. The failures need
 to be diagnosed.
+
+10. Obtain access to NetBSD and OpenBSD platforms.
