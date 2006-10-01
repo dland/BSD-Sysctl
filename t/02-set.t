@@ -9,17 +9,18 @@ use Test::More tests => 10;
 use BSD::Sysctl qw(sysctl sysctl_set);
 
 SKIP: {
+    skip( 'Not running as root (probably a sane decision)', 10 )
+        if $<;
     skip( 'TEST_BSD_SYSCTL_NAME environment variable not set', 10 )
         unless exists $ENV{TEST_BSD_SYSCTL_NAME};
     skip( 'TEST_BSD_SYSCTL_VALUE environment variable not set', 10 )
         unless exists $ENV{TEST_BSD_SYSCTL_VALUE};
-    skip( 'Not running as root (this is probably a sane choice for you)', 10 )
-        if $<;
 
     my $variable = $ENV{TEST_BSD_SYSCTL_NAME};
     my $value    = $ENV{TEST_BSD_SYSCTL_VALUE};
 
     my $original = sysctl($variable);
+    diag( "$variable initial value: $original" );
     ok(defined($original), "able to read $variable") or diag "err=$!";
 
     if ($value eq $original) {
@@ -40,10 +41,12 @@ DIAG
 
     $new = sysctl($variable);
     is( $new, $original, "read back the old value" );
+    diag( "$variable restored value: $new" );
 
     {
         my $obj = BSD::Sysctl->new($variable);
         my $original = $obj->get();
+        diag( "$variable initial value: $original" );
         ok(defined($original), "able to oo-read $variable") or diag "err=$!";
 
         my $ret = $obj->set($value);
@@ -57,5 +60,6 @@ DIAG
 
         $new = $obj->get();
         is( $new, $original, "oo-read back the old value" );
+        diag( "$variable restored value: $new" );
     }
 }
