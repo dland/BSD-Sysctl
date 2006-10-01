@@ -4,8 +4,10 @@ use warnings;
 use ExtUtils::MakeMaker;
 use Config;
 
+my $module_name = 'BSD::Sysctl';
+
 if ($Config{osname} ne 'freebsd') {
-    die "This module does not support the ($Config{osname}) platform.\n";
+    die "$module_name does not support the ($Config{osname}) platform.\n";
 }
 
 my $mapfile = 'mibfmt.map';
@@ -27,23 +29,25 @@ while (<$map>) {
     $define{$key} = [$str, $num];
 }
 
-open my $out_h, '>', 'bsd-sysctl.h' or die "Cannot open C header for output: $!\n";
+open my $out_h,  '>', 'bsd-sysctl.h'  or die "Cannot open C header for output: $!\n";
+open my $out_pl, '>', 'bsd-sysctl.pl' or die "Cannot open Perl header for output: $!\n";
+
+my $years = (gmtime)[5]+1900;
+$years = ($years == 2006) ? $years : "2006-$years";
 
 print $out_h <<EOH;
-/* bsd-sysctl.h -- defines for BSD::Sysctl
+/* bsd-sysctl.h -- defines for $module_name
  *
- * Copyright (C) 2006, David Landgren, all rights reserved.
+ * Copyright (C) $years, David Landgren, all rights reserved.
  * This file genned by $0 at @{[scalar gmtime]}
  */
 
 EOH
 
-open my $out_pl, '>', 'bsd-sysctl.pl' or die "Cannot open Perl header for output: $!\n";
-
 print $out_pl <<EOH;
-# bsd-sysctl.pl -- constants for BSD::Sysctl
+# bsd-sysctl.pl -- constants for $module_name
 #
-# Copyright (C) 2006, David Landgren, all rights reserved.
+# Copyright (C) $years, David Landgren, all rights reserved.
 # This file genned by $0 at @{[scalar gmtime]}
 
 EOH
@@ -59,7 +63,12 @@ close $out_h;
 close $out_pl;
 
 WriteMakefile(
-    NAME => 'BSD::Sysctl',
-    VERSION_FROM => 'Sysctl.pm',
-    PREREQ_PM => { 'XSLoader' => 0 },
+    NAME          => $module_name,
+    AUTHOR        => 'David Landgren',
+    ABSTRACT_FROM => 'Sysctl.pm',
+    VERSION_FROM  => 'Sysctl.pm',
+    LICENSE       => 'perl',
+    PREREQ_PM     => {
+        'XSLoader' => 0
+    },
 );
