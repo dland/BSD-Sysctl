@@ -1,6 +1,6 @@
 This file is the README for BSD::Sysctl version 0.03
 
-INSTALL
+INSTALLATION
 
 perl Makefile.PL
 make
@@ -12,15 +12,56 @@ Support for OpenBSD and NetBSD will appear in future releases. In
 theory, any system that uses a sysctl interface to the kernel should
 be able to be handled by this module.
 
+TESTING
+
 This module requires the following modules for thorough testing:
 
   Test::More
 
-This module can optionally use the following modules for
-testing (their absence is not a problem).
+This module can optionally use the following modules for testing
+(their absence is not a problem).
 
-  Test::Pod
-  Test::Pod::Coverage
+  Test::Pod Test::Pod::Coverage
+
+In order to test whether setting sysctl variables works, a number
+of preconditions must be met.
+
+Firstly, the test script t/02-set.t must be run with root privileges
+(either as root, or via sudo for example). If not, it will bail out
+gracefully.
+
+Secondly, you must choose the sysctl variable you wish to use.  The
+sysctl(8) man page lists a number of variables that can be modified.
+You must also choose a new value for the variable to store.
+
+BE CAREFUL: if you do not know what you are doing, you can render
+your system unstable, lose network connectivity, lose access to
+your filesystem and/or cause the system to lock up.
+
+If in doubt, a safe choice is a tweak for UDP blackholing:
+
+  net.inet.udp.blackhole
+
+This is usually set to 0, but you can (and often should) set it to
+1. This controls how the system behaves when someone (usually a
+cracker), probes your machine.
+
+Finally, two environment variables must be set. The first variable,
+TEST_BSD_SYSCTL_NAME, holds the name of the variable, and the
+second variable, TEST_BSD_SYSCTL_VALUE, holds the new value to which
+the variable should be set.
+
+On a Bourne shell, the following commands will work:
+
+  % export TEST_BSD_SYSCTL_NAME=net.inet.udp.blackhole
+  % export TEST_BSD_SYSCTL_VALUE=1
+  % sudo make test
+
+When these three preconditions are met, the test script will then
+change the variable to the new value, and then, most importantly,
+set it back to the initial value. In the unlikely event that the
+test script crashes half way through, you will have to restore the
+variable manually to its initial value.
 
 HELPING
 
@@ -32,11 +73,11 @@ have a publically accessible machine on the net, and you are fine
 with the idea of giving me an account on said machine, then drop
 me a line.
 
-I will send you my public key for connecting via ssh. All
-I need is a shell and a C compiler, and I give you my word that I
-will not do anything evil. If required, I will connect only from
-a fixed address (which would allow you to set up an AllowUsers
-USER@HOST rule in your sshd_config file).
+I will send you my public key for connecting via ssh. All I need
+is a shell and a C compiler, and I give you my word that I will not
+do anything evil. If required, I will connect only from a fixed
+address (which would allow you to set up an AllowUsers USER@HOST
+rule in your sshd_config file).
 
 IMPLEMENTATION
 
