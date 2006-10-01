@@ -4,12 +4,16 @@
 # Copyright (C) 2006 David Landgren
 
 use strict;
-use Test::More tests => 4;
+use Test::More tests => 6;
 
 my $fixed = 'The scalar remains the same';
 $_ = $fixed;
 
 BEGIN { use_ok('BSD::Sysctl', qw(sysctl sysctl_exists)); }
+
+my $lastpid = BSD::Sysctl->new('kern.lastpid');
+ok(defined($lastpid), 'made a new object');
+is(ref($lastpid), 'BSD::Sysctl', 'in the right class');
 
 SKIP: {
     skip( 'Test::Pod not installed on this system', 1 )
