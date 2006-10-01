@@ -1,6 +1,6 @@
 # BSD::Sysctl.pm - Access BSD sysctl(8) information directly
 #
-# Copyright (C) 2006 David Landgren, all rights reserved
+# Copyright (C) 2006 David Landgren, all rights reserved.
 
 package BSD::Sysctl;
 
@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -41,135 +41,28 @@ use constant FMT_XINPCB      => 23;
 use constant FMT_XVFSCONF    => 24;
 use constant FMT_STRUCT_CDEV => 25;
 
-# explicitly short-circuit a segfault until I can figure out why
-# some of these might be nodes rather than leaves
-%MIB_SKIP = map {($_,1)} qw(
-    dev.acd.%parent
-    dev.acd.0.%location
-    dev.acd.0.%pnpinfo
-    dev.acpi.%parent
-    dev.acpi.0.%location
-    dev.acpi.0.%pnpinfo
-    dev.acpi_acad.%parent
-    dev.acpi_button.%parent
-    dev.acpi_ec.%parent
-    dev.acpi_lid.%parent
-    dev.acpi_sysresource.%parent
-    dev.acpi_timer.%parent
-    dev.ad.%parent
-    dev.ad.0.%location
-    dev.ad.0.%pnpinfo
-    dev.agp.%parent
-    dev.ata.%parent
-    dev.ata.0.%location
-    dev.ata.0.%pnpinfo
-    dev.ata.1.%location
-    dev.ata.1.%pnpinfo
-    dev.atapci.%parent
-    dev.atdma.%parent
-    dev.atkbd.%parent
-    dev.atkbd.0.%location
-    dev.atkbd.0.%pnpinfo
-    dev.atkbdc.%parent
-    dev.atpic.%parent
-    dev.attimer.%parent
-    dev.battery.%parent
-    dev.cardbus.0.%location
-    dev.cardbus.0.%pnpinfo
-    dev.cardbus.1.%location
-    dev.cardbus.1.%pnpinfo
-    dev.cbb.%parent
-    dev.cpu.%parent
-    dev.drmsub.%parent
-    dev.fd.%parent
-    dev.fd.0.%location
-    dev.fd.0.%pnpinfo
-    dev.fdc.%parent
-    dev.fxp.%parent
-    dev.hostb.%parent
-    dev.inphy.%parent
-    dev.isa.%parent
-    dev.isa.0.%location
-    dev.isa.0.%pnpinfo
-    dev.isab.%parent
-    dev.miibus.%parent
-    dev.miibus.0.%location
-    dev.miibus.0.%pnpinfo
-    dev.nexus.%parent
-    dev.nexus.0.%desc
-    dev.nexus.0.%location
-    dev.nexus.0.%pnpinfo
-    dev.npx.%parent
-    dev.npx.0.%location
-    dev.npx.0.%pnpinfo
-    dev.npxisa.%parent
-    dev.orm.%parent
-    dev.orm.0.%location
-    dev.orm.0.%pnpinfo
-    dev.pccard.%parent
-    dev.pccard.0.%location
-    dev.pccard.0.%pnpinfo
-    dev.pccard.1.%location
-    dev.pccard.1.%pnpinfo
-    dev.pci.%parent
-    dev.pci.0.%location
-    dev.pci.0.%pnpinfo
-    dev.pci.2.%location
-    dev.pci.2.%pnpinfo
-    dev.pcib.%parent
-    dev.pci_link.%parent
-    dev.pmtimer.%parent
-    dev.pmtimer.0.%desc
-    dev.pmtimer.0.%location
-    dev.pmtimer.0.%pnpinfo
-    dev.ppc.%parent
-    dev.ppbus.%parent
-    dev.ppbus.0.%location
-    dev.ppbus.0.%pnpinfo
-    dev.psm.%parent
-    dev.psm.0.%location
-    dev.psm.0.%pnpinfo
-    dev.psmcpnp.%parent
-    dev.sc.%parent
-    dev.sc.0.%location
-    dev.sc.0.%pnpinfo
-    dev.sio.%parent
-    dev.sio.0.%desc
-    dev.sio.0.%location
-    dev.sio.0.%pnpinfo
-    dev.uhci.%parent
-    dev.uhub.%parent
-    dev.uhub.0.%location
-    dev.uhub.0.%pnpinfo
-    dev.uhub.1.%location
-    dev.uhub.1.%pnpinfo
-    dev.uhub.2.%location
-    dev.uhub.2.%pnpinfo
-    dev.usb.%parent
-    dev.usb.0.%location
-    dev.usb.0.%pnpinfo
-    dev.usb.1.%location
-    dev.usb.1.%pnpinfo
-    dev.usb.2.%location
-    dev.usb.2.%pnpinfo
-    dev.vga.%parent
-    dev.vga.0.%location
-    dev.vga.0.%pnpinfo
-    hw.dri.0.bufs
-    machdep.siots
-);
-
 push @EXPORT_OK, 'sysctl';
 sub sysctl {
     my $mib = shift;
-    return -1 if exists $MIB_SKIP{$mib};
     return undef unless exists $MIB_CACHE{$mib} or _mib_info($mib);
     return _mib_lookup($mib);
+}
+
+push @EXPORT_OK, 'sysctl_set';
+sub sysctl_set {
+    my $mib = shift;
+    return undef unless exists $MIB_CACHE{$mib} or _mib_info($mib);
+    return _mib_set($mib, $_[0]);
 }
 
 push @EXPORT_OK, 'sysctl_exists';
 sub sysctl_exists {
     return _mib_exists($_[0]);
+}
+
+push @EXPORT_OK, 'sysctl_description';
+sub sysctl_description {
+    return _mib_description($_[0]);
 }
 
 XSLoader::load 'BSD::Sysctl', $VERSION;
@@ -180,8 +73,8 @@ BSD::Sysctl - Fetch sysctl values from BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.01 of BSD::Sysctl,
-release 2006-07-22.
+This document describes version 0.02 of BSD::Sysctl,
+release 2006-08-31.
 
 =head1 SYNOPSIS
 
@@ -238,17 +131,49 @@ them as a raw hexdump (for example, C<net.inet.tcp.stats>).
 =item sysctl_set
 
 Perform a sysctl system call to set a sysctl variable to a new
-value. This requires C<root> privileges. NOT YET IMPLEMENTED.
+value.
+
+  if( !sysctl_set( 'net.inet.udp.blackhole', 1 )) {
+	  warn "That didn't work: $!\n";
+  }
+
+Note: you must have C<root> privileges to perform this, otherwise
+your request will be politely ignored.
+
+=item sysctl_description
+
+Returns the description of the variable, instead of the contents
+of the variable. The information is only as good as the developers
+provide, and everyone knows that developers hate writing documentation.
+
+  my $mib = 'kern.ipc.somaxconn';
+  print "$mib is ", sysctl_description($mib), $/;
+  # prints the following:
+  # kern.ipc.somaxconn is Maximum pending socket connection queue size
 
 =item sysctl_exists
 
 Check whether the variable name exists. Returns true or false
 depending on whether the name is recognised by the system.
 
-Checking whether a variable exists does not perform the
-conversion to the numeric OID (and the attendant caching).
+Checking whether a variable exists does not perform the conversion
+to the numeric OID (and the attendant caching).
 
 =back
+
+=head1 NOTES
+
+Yes, you could manipulate C<sysctl> variables directly from Perl
+using the C<syscall> routine, however, you would have to have to
+jump through various arduous hoops, such as performing the
+string-E<gt>numeric OID mapping yourself, packing arrays of C<int>s
+and generally getting the argument lists right. That would be a
+considerable amount of hassle, and prone to error. This module makes
+it easy.
+
+No distinction between ordinary and opaque variables is made on
+FreeBSD. If you ask for a variable, you get it (for instance,
+C<kern.geom.confxml>). This is good.
 
 =head1 DIAGNOSTICS
 
@@ -276,9 +201,6 @@ at least for the time being. This is a bug that should be reported.
 At the current time, only FreeBSD versions 4.x through 6.x are
 supported.
 
-Setting sysctl values is currently not supported. This functionality
-will be developed in subsequent versions.
-
 I am looking for volunteers to help port this module to NetBSD and
 OpenBSD (or access to such machines), and possibly even Solaris.
 If you are interested in helping, please consult the README file
@@ -289,15 +211,6 @@ for more information.
 This is my first XS module. I may be doing wild and dangerous things
 and not realise it. Gentle nudges in the right direction will be
 gratefully received.
-
-Some sysctl values cannot be fetched, even though the C<sysctl>
-program can (as it uses an undocumented approach). This functionality
-may be added in the future.
-
-Other sysctl values cannot be displayed, since they appear to be
-pointers, and dump core when dereferenced. In this case, a result
-of -1 is returned. Most values of this type occur in the C<dev.>
-hierarchy.
 
 Some sysctl values are 64-bit quantities. I am not all sure that
 these are handled correctly.

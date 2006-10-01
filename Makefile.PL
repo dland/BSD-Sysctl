@@ -5,7 +5,7 @@ use ExtUtils::MakeMaker;
 use Config;
 
 if ($Config{osname} ne 'freebsd') {
-	die "This module does not support the ($Config{osname}) platform.\n";
+    die "This module does not support the ($Config{osname}) platform.\n";
 }
 
 my $mapfile = 'mibfmt.map';
@@ -61,5 +61,5 @@ close $out_pl;
 WriteMakefile(
     NAME => 'BSD::Sysctl',
     VERSION_FROM => 'Sysctl.pm',
-	PREREQ_PM => { 'XSLoader' => 0 },
+    PREREQ_PM => { 'XSLoader' => 0 },
 );

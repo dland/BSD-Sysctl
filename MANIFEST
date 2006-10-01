@@ -1,22 +1,25 @@
 Changes
-MANIFEST
 Makefile.PL
+MANIFEST
+TODO
 README
 Sysctl.pm
 Sysctl.xs
-TODO
 mibfmt.map
 eg/benchmark
 eg/check_hv_store
 eg/fmt.c
 eg/kernpid.c
 eg/mib_as_oid.pl
+eg/mib_desc.pl
 eg/mib_exists.pl
 eg/mib_info.pl
 eg/mib_scan.pl
+eg/mib_set.pl
 eg/mib_show.pl
 eg/show.c
 eg/sizeof.c
 t/00-basic.t
 t/01-get.t
-META.yml                                 Module meta-data (added by MakeMaker)
+t/02-set.t
+META.yml			Module meta-data (added by MakeMaker)
