@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -65,6 +65,23 @@ sub sysctl_description {
     return _mib_description($_[0]);
 }
 
+sub new {
+    my $class = shift;
+    my $name  = shift;
+    return undef unless exists $MIB_CACHE{$name} or _mib_info($name);
+    return bless \$name, $class;
+}
+
+sub get {
+    my $self = shift;
+    return _mib_lookup($$self);
+}
+
+sub set {
+    my $self = shift;
+    return _mib_set($$self, @_);
+}
+
 XSLoader::load 'BSD::Sysctl', $VERSION;
 
 =head1 NAME
@@ -73,8 +90,8 @@ BSD::Sysctl - Fetch sysctl values from BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.02 of BSD::Sysctl,
-release 2006-08-31.
+This document describes version 0.03 of BSD::Sysctl, released
+2006-08-31.
 
 =head1 SYNOPSIS
 
@@ -91,8 +108,6 @@ release 2006-08-31.
 
 =head1 DESCRIPTION
 
-Note: this is an alpha release.
-
 C<BSD::Sysctl> offers a native Perl interface for fetching sysctl
 values that describe the kernel state of BSD-like operating systems.
 This is around 80 times faster than scraping the output of the
@@ -104,7 +119,7 @@ the details of how to format the results, are cached. Hence, the
 first call to C<sysctl> requires three system calls, however,
 subsequent calls require only one call.
 
-=head2 ROUTINES
+=head1 ROUTINES
 
 =over 4
 
@@ -130,11 +145,10 @@ them as a raw hexdump (for example, C<net.inet.tcp.stats>).
 
 =item sysctl_set
 
-Perform a sysctl system call to set a sysctl variable to a new
-value.
+Perform a system call to set a sysctl variable to a new value.
 
   if( !sysctl_set( 'net.inet.udp.blackhole', 1 )) {
-	  warn "That didn't work: $!\n";
+     warn "That didn't work: $!\n";
   }
 
 Note: you must have C<root> privileges to perform this, otherwise
@@ -161,7 +175,56 @@ to the numeric OID (and the attendant caching).
 
 =back
 
+=head1 METHODS
+
+An object-oriented interface is also available. This allows you
+to set up an object that stores the name of a C<sysctl> variable,
+and then you can retrieve its value as often as needed.
+
+  my $lastpid = BSD::Sysctl->new( 'kern.lastpid' );
+  while (1) {
+    print $lastpid->get(), $/;
+    sleep 1;
+  }
+
+This is handy when you want to monitor a number of variables. Just
+store the objects in an array and loop over them:
+
+  my @var;
+  for my $v (@ARGV) {
+    push @var, BSD::Sysctl->new($v);
+  }
+  print join(' ', map {"$$_:" . $_->get} @var), $/;
+
+Note: the internal implementation uses a blessed scalar. Thus, you
+may recover the name of the variable by dereferencing the object
+itself.
+
+=over 8
+
+=item new
+
+Create a new BSD::Sysctl object. Takes the name of the C<sysctl>
+variable to examine.
+
+=item get
+
+Returns the current value of the C<sysctl> variable.
+
+  my $value = $variable->get();
+
+=item set
+
+Set the value of the C<sysctl> variable. Returns true on success,
+C<undef> on failure.
+
+  $variable->set(99);
+
+=back
+
 =head1 NOTES
+
+Note: this is a beta release.
 
 Yes, you could manipulate C<sysctl> variables directly from Perl
 using the C<syscall> routine, however, you would have to have to

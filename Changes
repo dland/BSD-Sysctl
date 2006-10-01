@@ -1,6 +1,10 @@
 Revision history for Perl extension BSD::Sysctl
 
-0.02 2006-08-31
+0.03 2006-08-31 18:19:42
+    - Object-oriented interface added for getting/setting variables
+      continuously.
+
+0.02 2006-08-31 11:02:43
     - You can now set the values of variables (assuming they are
       not read-only).
     - Fixed up coredumps when sysctl values are zero-length ASCII

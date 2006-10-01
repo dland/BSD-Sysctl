@@ -4,7 +4,7 @@
 # Copyright (C) 2006 David Landgren
 
 use strict;
-use Test::More tests => 15;
+use Test::More tests => 17;
 
 use BSD::Sysctl qw(sysctl sysctl_exists);
 
@@ -47,12 +47,21 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
 }
 
 ok(sysctl_exists('kern.maxusers'), 'kern.maxusers exists');
-ok(!sysctl_exists('kern.maxbananas'), 'kern.maxbananas doesn not exist');
+ok(!sysctl_exists('kern.maxbananas'), 'kern.maxbananas does not exist');
 
 {
     my $load_avg = sysctl('vm.loadavg');
     is(ref($load_avg), 'ARRAY', 'vm.loadavg is an array');
     is(scalar(@$load_avg), 3, 'vm.loadavg has 3 elements');
 }
-is(scalar(keys %BSD::Sysctl::MIB_CACHE), 4, 'cached mib count')
+
+{
+    my $lastpid = BSD::Sysctl->new('kern.lastpid');
+    my $pid = $lastpid->get();
+    ok(defined($pid), 'got the last pid');
+    $pid = $lastpid->get();
+    ok(defined($pid), 'got the last pid again');
+}
+
+is(scalar(keys %BSD::Sysctl::MIB_CACHE), 5, 'cached mib count')
     or do { diag("cached: [$_]") for sort keys %BSD::Sysctl::MIB_CACHE };

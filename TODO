@@ -12,14 +12,6 @@ TODO list for BSD::Sysctl
        sleep 1;
    }
 
-Or would an OO interface be less Clever?
-
-   my $lastpid = BSD::Sysctl->new('kern.lastpid');
-   while(1) {
-       print $lastpid->get(), $/;
-       sleep 1;
-   }
-
 5. Offer functions that fetch popular values directly (e.g.
 pagefree(), representing vm.vmtotal's "number of vm pages free"
 value.
