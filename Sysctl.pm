@@ -238,7 +238,29 @@ No distinction between ordinary and opaque variables is made on
 FreeBSD. If you ask for a variable, you get it (for instance,
 C<kern.geom.confxml>). This is good.
 
+When setting a variable to an integer value, the value is passed
+to the C routine as is, which calls C<strtol> (or C<strtoul>) to
+perform the conversion. The C routine checks to see whether the
+conversion succeeds.
+
+The alternative would have been to let Perl handle the conversion.
+The problem with this is that Perl tries to do the right thing and
+returns 0 in the event of an invalid conversion, and setting many
+C<sysctl> variables to 0 could bring down a system (for instance,
+maximum number of open files per process). This design makes the
+module handle bad data more gracefully.
+
 =head1 DIAGNOSTICS
+
+  "invalid integer: '...'"
+
+A variable was set via C<sysctl_set>, and the variable required an
+integer value, however, the program was not able to convert the
+input into anything that resembled an integer. Solution: check your
+input.
+
+Similar warnings occur with unigned ints, longs and unsigned longs.
+In all cases, the variable retains its initial value.
 
   "uncached mib: [sysctl name]"
 
