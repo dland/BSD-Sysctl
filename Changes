@@ -1,5 +1,9 @@
 Revision history for Perl extension BSD::Sysctl
 
+0.04
+    - Licensing information clarified in Makefile.PL
+	- More documentation in Sysctl.pm pod, as well as the README
+
 0.03 2006-08-31 18:19:42
     - Object-oriented interface added for getting/setting variables
       continuously.
