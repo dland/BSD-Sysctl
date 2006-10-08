@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -90,8 +90,8 @@ BSD::Sysctl - Fetch sysctl values from BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.03 of BSD::Sysctl, released
-2006-08-31.
+This document describes version 0.04 of BSD::Sysctl, released
+2006-10-08.
 
 =head1 SYNOPSIS
 
@@ -312,6 +312,11 @@ appreciated.
 L<BSD::Resource> - process resource limit and priority functions.
 
 L<IO::KQueue> - monitor changes on sockets, files, processes and signals.
+
+=head1 ACKNOWLEDGEMENTS
+
+Douglas Steinwand added support for the amd64 platform in release
+0.04.
 
 =head1 AUTHOR
 
