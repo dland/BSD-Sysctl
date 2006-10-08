@@ -1,6 +1,7 @@
 Revision history for Perl extension BSD::Sysctl
 
 0.04
+    - amd64 support, courtesy of a patch from Douglas Steinwand.
     - Licensing information clarified in Makefile.PL
 	- More documentation in Sysctl.pm pod, as well as the README
 
