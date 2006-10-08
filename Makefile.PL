@@ -44,6 +44,11 @@ print $out_h <<EOH;
 
 EOH
 
+# bootinfo.h header file not available on the AMD64 platform
+if (-r '/usr/include/machine/bootinfo.h') {
+    print $out_h "#include <machine/bootinfo.h>\n";
+}
+
 print $out_pl <<EOH;
 # bsd-sysctl.pl -- constants for $module_name
 #
