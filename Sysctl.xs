@@ -39,8 +39,6 @@
 #include <netinet/udp_var.h>
 
 #include <netinet6/raw_ip6.h>
-#include <machine/bootinfo.h>
-
 #include "bsd-sysctl.h"
 
 MODULE = BSD::Sysctl   PACKAGE = BSD::Sysctl
@@ -64,7 +62,7 @@ _mib_info(const char *arg)
         int nr_octets;
         int size;
         char fmt[BUFSIZ];
-        int len = sizeof(fmt);
+        size_t len = sizeof(fmt);
         int fmt_type;
         char *f = fmt + sizeof(int);
         char res[BUFSIZ];
@@ -176,7 +174,7 @@ _mib_description(const char *arg)
         size_t miblen = (sizeof(mib)/sizeof(mib[0]));
         int qmib[CTL_MAXNAME+2];
         char desc[BUFSIZ];
-        int len = sizeof(desc);
+        size_t len = sizeof(desc);
     CODE:
         /* see if the mib exists */
         if (sysctlnametomib(arg, mib, &miblen) == -1) {
@@ -205,7 +203,7 @@ _mib_lookup(const char *arg)
         int oid_fmt;
         int oid_len;
         char buf[BUFSIZ*10];
-        int buflen = sizeof(buf);
+        size_t buflen = sizeof(buf);
 
     CODE:
         /* see if the mib exists */
@@ -579,6 +577,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "outpackets",     10, newSVnv(inf->rip6s_opackets), 0);
             break;
         }
+#ifdef BOOTINFO_VERSION
         case FMT_BOOTINFO: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct bootinfo *inf = (struct bootinfo *)buf;
@@ -599,6 +598,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "extmem",         6, newSVuv(inf->bi_extmem), 0);
             break;
         }
+#endif
         case FMT_N:
         case FMT_IPSTAT:
         case FMT_NFSRVSTATS:
