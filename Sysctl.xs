@@ -590,12 +590,17 @@ _mib_lookup(const char *arg)
              * bi_esymtab
              */
             hv_store(c, "version",        7, newSVuv(inf->bi_version), 0);
+            /* don't know if any IA64 fields are useful,
+             * (as per /usr/src/sys/ia64/include/bootinfo.h)
+             */
+#ifndef __ia64
             hv_store(c, "biosused",       8, newSVuv(inf->bi_n_bios_used), 0);
             hv_store(c, "size",           4, newSVuv(inf->bi_size), 0);
             hv_store(c, "msizevalid",    10, newSVuv(inf->bi_memsizes_valid), 0);
             hv_store(c, "biosdev",        7, newSVuv(inf->bi_bios_dev), 0);
             hv_store(c, "basemem",        7, newSVuv(inf->bi_basemem), 0);
             hv_store(c, "extmem",         6, newSVuv(inf->bi_extmem), 0);
+#endif
             break;
         }
 #endif
