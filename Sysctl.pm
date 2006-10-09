@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -90,8 +90,8 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.04 of BSD::Sysctl, released
-2006-10-08.
+This document describes version 0.05 of BSD::Sysctl, released
+2006-10-09.
 
 =head1 SYNOPSIS
 
