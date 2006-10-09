@@ -86,7 +86,7 @@ XSLoader::load 'BSD::Sysctl', $VERSION;
 
 =head1 NAME
 
-BSD::Sysctl - Fetch sysctl values from BSD-like systems
+BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
