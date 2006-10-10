@@ -307,6 +307,10 @@ A short snippet demonstrating the problem, along with the expected
 and actual output, and the version of BSD::Sysctl used, will be
 appreciated.
 
+I try to keep an eye on L<http://portsmon.freebsd.org/portoverview.py?category=sysutils&portname=p5-BSD-Sysctl> to see what problems are logged via the FreeBSD ports
+system, but using the CPAN RT bug tracking system is your best
+bet.
+
 =head1 SEE ALSO
 
 L<BSD::Resource> - process resource limit and priority functions.
