@@ -1,5 +1,9 @@
 Revision history for Perl extension BSD::Sysctl
 
+0.07
+    - Test failure on FreeBSD 4.10: kern.lastpid does not exist,
+	  use something else (the module works anyway).
+
 0.06 2006-10-09 20:59:54 UTC
     - ia64 support,as seen by looking at:
       http://portsmon.freebsd.org/portoverview.py?category=sysutils&portname=p5-BSD-Sysctl
