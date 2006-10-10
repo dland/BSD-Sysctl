@@ -11,9 +11,17 @@ $_ = $fixed;
 
 BEGIN { use_ok('BSD::Sysctl', qw(sysctl sysctl_exists)); }
 
-my $lastpid = BSD::Sysctl->new('kern.lastpid');
-ok(defined($lastpid), 'made a new object');
-is(ref($lastpid), 'BSD::Sysctl', 'in the right class');
+my $osrelease = BSD::Sysctl->new('kern.osrelease');
+ok(defined($osrelease), 'made a new object');
+is(ref($osrelease), 'BSD::Sysctl', 'in the right class');
+
+my $revision = 'unknown';
+eval {
+	my $release = $osrelease->get();
+	$revision = BSD::Sysctl::sysctl('kern.osrevision');
+	diag("platform info: release=$release, revision=$revision.");
+};
+$@ and diag("eval failure: [$@]");
 
 SKIP: {
     skip( 'Test::Pod not installed on this system', 1 )
