@@ -74,7 +74,6 @@ _mib_info(const char *arg)
         /* see if the mib exists */
         miblen = (sizeof(mib) / sizeof(mib[0])) - 2;
         if (sysctlnametomib(arg, mib+2, &miblen) == -1) {
-            warn( "ook\n" );
             XSRETURN_UNDEF;
         }
         nr_octets = miblen;
