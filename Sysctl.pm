@@ -91,7 +91,7 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 =head1 VERSION
 
 This document describes version 0.06 of BSD::Sysctl, released
-2006-xx-xx.
+2006-10-10.
 
 =head1 SYNOPSIS
 
