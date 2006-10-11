@@ -28,3 +28,6 @@ obscure variables are not fetched correctly. The failures need
 to be diagnosed.
 
 10. Obtain access to NetBSD and OpenBSD platforms.
+
+11. Remember to tweak the kern.ipc.maxsockbuf test when
+support for other platforms is added.
