@@ -10,11 +10,9 @@ if ($Config{osname} ne 'freebsd') {
     die "$module_name does not support the ($Config{osname}) platform.\n";
 }
 
-my $mapfile = 'mibfmt.map';
-open my $map, '<', $mapfile or die "Cannot open $mapfile for input: $!\n";
 my %define;
 my $maxlen = 0;
-while (<$map>) {
+while (<DATA>) {
     chomp;
     next unless my ($key, $num, $str) = ($_ =~ /^(\S+)\t(\S+)\t(\S+)/);
     if ($str eq 'auto') {
@@ -22,7 +20,7 @@ while (<$map>) {
             $str = 'FMT_' . uc($1);
         }
         else {
-            die "$mapfile($.): cannot resolve auto name from $key\n";
+            die "$0: cannot resolve auto name from $key\n";
         }
     }
     $maxlen = length($str) if $maxlen < length($str);
@@ -77,3 +75,42 @@ WriteMakefile(
         'XSLoader' => 0
     },
 );
+
+__DATA__
+#
+# List of constant definitions.
+#
+# This produces
+#  -- mibfmt.h (#defines for Sysctl.xs)
+#  -- mibfmt.pl (use constants for Sysctl.pm)
+#
+# auto string definitions are derived from the first
+# field, for instance, S,bootinfo => FMT_BOOTINFO
+# (This eliminates a chance to introduce typos).
+# _key	numeric	string
+
+A	1	FMT_A
+I	2	FMT_INT
+IU	3	FMT_UINT
+L	4	FMT_LONG
+LU	5	FMT_ULONG
+N	6	FMT_N
+S,bootinfo	7	auto
+S,clockinfo	8	auto
+S,devstat	9	auto
+S,icmpstat	10	auto
+S,igmpstat	11	auto
+S,ipstat	12	auto
+S,loadavg	13	auto
+S,mbstat	14	auto
+S,nfsrvstats	15	auto
+S,nfsstats	16	auto
+S,ntptimeval	17	auto
+S,rip6stat	18	auto
+S,tcpstat	19	auto
+S,timeval	20	auto
+S,udpstat	21	auto
+S,vmtotal	22	auto
+S,xinpcb	23	auto
+S,xvfsconf	24	auto
+T,struct_cdev	25	auto
