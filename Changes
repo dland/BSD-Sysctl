@@ -1,5 +1,8 @@
 Revision history for Perl extension BSD::Sysctl
 
+0.08
+    - Rationalised the example programs.
+
 0.07 2006-10-22
     - Didn't realise that there was another test for kern.lastpid
       in t/01-get.t
