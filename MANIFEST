@@ -18,4 +18,5 @@ eg/watch-open-files
 t/00-basic.t
 t/01-get.t
 t/02-set.t
+t/03-iterator.t
 META.yml			Module meta-data (added by MakeMaker)
