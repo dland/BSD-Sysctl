@@ -41,9 +41,156 @@
 #include <netinet6/raw_ip6.h>
 #include "bsd-sysctl.h"
 
+int
+_init_iterator(HV *self, int *mib, int *miblenp, int valid) {
+    SV **headp;
+    int qoid[CTL_MAXNAME];
+    u_int qoidlen;
+    int j;
+
+    qoid[0] = 0;
+    qoid[1] = 2;
+    if (valid) {
+        memcpy(qoid+2, mib, (*miblenp) * sizeof(int));
+        qoidlen = *miblenp + 2;
+        *miblenp = (CTL_MAXNAME+2) * sizeof(int);
+    }
+    else {
+        headp = hv_fetch(self, "head", 4, 0);
+        if (!(headp && *headp)) {
+            croak( "failed to get some head in _init_iterator()\n" );
+        }
+        if (SvPOK(*headp)) {
+            /* begin where asked */
+            qoidlen = sizeof(qoid);
+            if (sysctlnametomib( SvPV_nolen(*headp), qoid+2, &qoidlen) == -1) {
+                warn( "_init_iterator(%s): sysctlnametomib lookup failed\n",
+                    SvPV_nolen(*headp)
+                );
+                return 0;
+            }
+            qoidlen += 2;
+        }
+        else {
+            /* begin at the beginning */
+            qoid[2] = 1;
+            qoidlen = 3;
+        }
+    }
+
+    printf( "next: " );
+    for (j = 0; j < qoidlen; ++j) {
+        if (j) printf("."); printf("%d", qoid[j]);
+    }
+    printf("\n");
+
+    /* load the mib */
+    if (sysctl(qoid, qoidlen, mib, miblenp, 0, 0) == -1) {
+        warn( "_init_iterator(): sysctl lookup failed\n" );
+        return 0;
+    }
+    *miblenp /= sizeof(int);
+    printf( "len: q=%d m=%d\n", qoidlen, *miblenp );
+    for (j = 0; j < *miblenp - 1; ++j) {
+        printf( "check %d (%d %d)\n", j, mib[j], qoid[j+2]);
+        if (valid && mib[j] != qoid[j+2]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 MODULE = BSD::Sysctl   PACKAGE = BSD::Sysctl
 
 PROTOTYPES: ENABLE
+
+SV *
+next (SV *refself)
+    INIT:
+        int mib[CTL_MAXNAME+2];
+        size_t miblen;
+        int qoid[CTL_MAXNAME+2];
+        size_t qoidlen;
+        char name[BUFSIZ];
+        size_t namelen;
+        HV *self;
+        SV **ctxp;
+        SV *ctx;
+        int j;
+        int *p;
+
+    CODE:
+        self = (HV *)SvRV(refself);
+        if (ctxp = hv_fetch(self, "_ctx", 4, 0)) {
+            p = (int *)SvPVX(*ctxp);
+            miblen = *p++;
+            memcpy(mib, p, miblen * sizeof(int));
+
+            printf( "recall: " );
+            for (j = 0; j < miblen; ++j) {
+                if (j) printf("."); printf("%d", mib[j]);
+            }
+            printf("\n");
+
+            if (!_init_iterator(self, mib, &miblen, 1)) {
+                XSRETURN_UNDEF;
+            }
+        }
+        else {
+            miblen = sizeof(mib)/sizeof(mib[0]);
+            if (!_init_iterator(self, mib, &miblen, 0)) {
+                XSRETURN_UNDEF;
+            }
+        }
+
+        printf( "ready: " );
+        for (j = 0; j < miblen; ++j) {
+            if (j) printf("."); printf("%d", mib[j]);
+        }
+        printf("\n");
+
+        qoid[0] = 0;
+        qoid[1] = 1;
+        memcpy(qoid+2, mib, miblen * sizeof(int));
+        qoidlen = miblen + 2;
+
+        printf( "query: " );
+        for (j = 0; j < qoidlen; ++j) {
+            if (j) printf("."); printf("%d", qoid[j]);
+        }
+        printf("\n");
+
+        bzero(name, BUFSIZ);
+        namelen = sizeof(name);
+        j = sysctl(qoid, qoidlen, name, &namelen, 0, 0);
+        if (j || !namelen) {
+            warn("next(): sysctl name failure %d %d %d", j, namelen, errno);
+            XSRETURN_UNDEF;
+        }
+        RETVAL = newSVpvn(name, namelen);
+
+        printf( "after: " );
+        for (j = 0; j < miblen; ++j) {
+            if (j) printf("."); printf("%d", mib[j]);
+        }
+        printf("\n");
+
+        /* reuse qoid to build context store
+         *  - the length of the mib
+         *  - followed by the mib values
+         * and copy to an SV to save in the self hash
+         */
+        p = qoid;
+        memcpy(p, (const void *)&miblen, sizeof(int));
+        p++;
+        memcpy(p, (const void *)mib, miblen * sizeof(int));
+
+        ctx = newSVpvn((const char *)qoid, (miblen+1) * sizeof(int));
+        SvREFCNT_inc(ctx);
+        hv_store(self, "_ctx", 4, ctx, 0);
+
+    OUTPUT:
+        RETVAL
 
 int
 _mib_exists(const char *arg)
@@ -53,24 +200,6 @@ _mib_exists(const char *arg)
         RETVAL = (sysctlnametomib(arg, mib, &miblen) != -1);
     OUTPUT:
         RETVAL
-
-void
-_next (int len, const char *cur)
-    INIT:
-        int mib[CTL_MAXNAME+2];
-        size_t miblen;
-        size_t off;
-        int j;
-
-    CODE:
-        mib[0] = 0;
-        mib[1] = 2;
-        off = 2;
-        cur += sizeof(int);
-        while (len--) {
-            cur += sizeof(int);
-            mib[off++] = (int)(*cur);
-        }
 
 SV *
 _mib_info(const char *arg)
@@ -100,7 +229,6 @@ _mib_info(const char *arg)
         mib[0] = 0;
         mib[1] = 4;
         if (sysctl(mib, nr_octets+2, fmt, &len, NULL, 0) == -1) {
-            warn( "oog\n" );
             XSRETURN_UNDEF;
         }
 
