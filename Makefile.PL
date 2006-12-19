@@ -74,6 +74,9 @@ WriteMakefile(
     PREREQ_PM     => {
         'XSLoader' => 0
     },
+    clean => {
+        FILES => 'bsd-sysctl.h bsd-sysctl.pl',
+    },
 );
 
 __DATA__
