@@ -1,6 +1,10 @@
 Revision history for Perl extension BSD::Sysctl
 
 0.08
+    - For the sysctl variables that correspond to C structs that we
+      decode, if the OS version does not define a member, then create
+      the hash key anyway, and set it to an empty string. This allows
+      cross-version programs to work with fewer version checks.
     - Rationalised the example programs.
 
 0.07 2006-10-22

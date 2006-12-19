@@ -364,10 +364,17 @@ _mib_lookup(const char *arg)
             hv_store(c, "mbuflen",        7, newSVuv(inf->m_mlen), 0);
             hv_store(c, "mbufhead",       8, newSVuv(inf->m_mhlen), 0);
             hv_store(c, "drain",          5, newSVuv(inf->m_drain), 0);
-#if __FreeBSD_version >= 500000
+#if __FreeBSD_version < 500000
+            hv_store(c, "numtypes",       8, newSVpvn("", 0), 0);
+#else
             hv_store(c, "numtypes",       8, newSViv(inf->m_numtypes), 0);
 #endif
-#if __FreeBSD_version >= 600000
+#if __FreeBSD_version < 600000
+            hv_store(c, "mbufs",          5, newSVpvn("", 0), 0);
+            hv_store(c, "mclusts",        7, newSVpvn("", 0), 0);
+            hv_store(c, "sfallocwait",   11, newSVpvn("", 0), 0);
+            hv_store(c, "sfiocnt",        7, newSVpvn("", 0), 0);
+#else
             hv_store(c, "mbufs",          5, newSVuv(inf->m_mbufs), 0);
             hv_store(c, "mclusts",        7, newSVuv(inf->m_mclusts), 0);
             hv_store(c, "sfallocwait",   11, newSVuv(inf->sf_allocwait), 0);
@@ -393,7 +400,14 @@ _mib_lookup(const char *arg)
             RETVAL = newRV((SV *)c);
             hv_store(c, "devno",           5, newSViv(inf->device_number), 0);
             hv_store(c, "unitno",          6, newSViv(inf->unit_number), 0);
-#if __FreeBSD_version >= 500000
+#if __FreeBSD_version < 500000
+            hv_store(c, "sequence",        8, newSVpvn("", 0), 0);
+            hv_store(c, "allocated",       9, newSVpvn("", 0), 0);
+            hv_store(c, "startcount",     10, newSVpvn("", 0), 0);
+            hv_store(c, "endcount",        8, newSVpvn("", 0), 0);
+            hv_store(c, "busyfromsec",    11, newSVpvn("", 0), 0);
+            hv_store(c, "busyfromfrac",   12, newSVpvn("", 0), 0);
+#else
             hv_store(c, "sequence",        8, newSVuv(inf->sequence0), 0);
             hv_store(c, "allocated",       9, newSViv(inf->allocated), 0);
             hv_store(c, "startcount",     10, newSViv(inf->start_count), 0);
@@ -527,13 +541,26 @@ _mib_lookup(const char *arg)
             hv_store(c, "zonefail",          8, newSVuv(inf->tcps_sc_zonefail), 0);
             hv_store(c, "sendcookie",       10, newSVuv(inf->tcps_sc_sendcookie), 0);
             hv_store(c, "recvcookie",       10, newSVuv(inf->tcps_sc_recvcookie), 0);
-#if __FreeBSD_version >= 500000
+#if __FreeBSD_version < 500000
+            hv_store(c, "minmssdrops",      11, newSVpvn("", 0), 0);
+            hv_store(c, "sendrexmitbad",    13, newSVpvn("", 0), 0);
+            hv_store(c, "hostcacheadd",     12, newSVpvn("", 0), 0);
+            hv_store(c, "hostcacheover",    13, newSVpvn("", 0), 0);
+#else
             hv_store(c, "minmssdrops",      11, newSVuv(inf->tcps_minmssdrops), 0);
             hv_store(c, "sendrexmitbad",    13, newSVuv(inf->tcps_sndrexmitbad), 0);
             hv_store(c, "hostcacheadd",     12, newSVuv(inf->tcps_hc_added), 0);
             hv_store(c, "hostcacheover",    13, newSVuv(inf->tcps_hc_bucketoverflow), 0);
 #endif
-#if __FreeBSD_version >= 600000
+#if __FreeBSD_version < 600000
+            hv_store(c, "badrst",            6, newSVpvn("", 0), 0);
+            hv_store(c, "sackrecover",      11, newSVpvn("", 0), 0);
+            hv_store(c, "sackrexmitsegs",   14, newSVpvn("", 0), 0);
+            hv_store(c, "sackrexmitbytes",  15, newSVpvn("", 0), 0);
+            hv_store(c, "sackrecv",          8, newSVpvn("", 0), 0);
+            hv_store(c, "sacksend",          8, newSVpvn("", 0), 0);
+            hv_store(c, "sackscorebover",   14, newSVpvn("", 0), 0);
+#else
             hv_store(c, "badrst",            6, newSVuv(inf->tcps_badrst), 0);
             hv_store(c, "sackrecover",      11, newSVuv(inf->tcps_sack_recovery_episode), 0);
             hv_store(c, "sackrexmitsegs",   14, newSVuv(inf->tcps_sack_rexmits), 0);
@@ -592,7 +619,14 @@ _mib_lookup(const char *arg)
             /* don't know if any IA64 fields are useful,
              * (as per /usr/src/sys/ia64/include/bootinfo.h)
              */
-#ifndef __ia64
+#ifdef __ia64
+            hv_store(c, "biosused",       8, newSVpvn("", 0), 0);
+            hv_store(c, "size",           4, newSVpvn("", 0), 0);
+            hv_store(c, "msizevalid",    10, newSVpvn("", 0), 0);
+            hv_store(c, "biosdev",        7, newSVpvn("", 0), 0);
+            hv_store(c, "basemem",        7, newSVpvn("", 0), 0);
+            hv_store(c, "extmem",         6, newSVpvn("", 0), 0);
+#else
             hv_store(c, "biosused",       8, newSVuv(inf->bi_n_bios_used), 0);
             hv_store(c, "size",           4, newSVuv(inf->bi_size), 0);
             hv_store(c, "msizevalid",    10, newSVuv(inf->bi_memsizes_valid), 0);
