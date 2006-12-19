@@ -86,39 +86,8 @@ sub iterator {
     my $class = shift;
     my $name  = shift;
     my $self;
-    if ($name) {
-        return undef unless exists $MIB_CACHE{$name} or _mib_info($name);
-        my $mib = $MIB_CACHE{$name};
-        $self = {
-            head => $mib,
-        };
-    }
-    else {
-        $self = {
-            head => undef,
-        };
-    }
+    $self->{head} = $name || undef;
     return bless $self, $class;
-}
-
-sub next {
-    my $self = shift;
-    my $cur = $self->{cur};
-    my $next;
-    if (defined $cur) {
-        $next = _next($cur);
-    }
-    else {
-        if (defined($self->{head})) {
-            my $head = $self->{head};
-            my $len = (() = unpack('i i/i', $head)) - 1;
-            $next = _next($len, $head);
-        }
-        else {
-            $next = _next(0, '');
-        }
-    }
-    $self->{cur} = $next;
 }
 
 XSLoader::load 'BSD::Sysctl', $VERSION;

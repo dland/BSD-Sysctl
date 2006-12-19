@@ -30,6 +30,7 @@
 
 int
 main(int argc, char **argv) {
+    printf( "sizeof(int) = %d\n", sizeof(int) );
     printf( "sizeof(struct mbstat) = %d\n", sizeof(struct mbstat) );
     printf( "sizeof(struct ntptimeval) = %d\n", sizeof(struct ntptimeval) );
     printf( "sizeof(struct timespec) = %d\n", sizeof(struct timespec) );
