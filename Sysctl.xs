@@ -54,6 +54,24 @@ _mib_exists(const char *arg)
     OUTPUT:
         RETVAL
 
+void
+_next (int len, const char *cur)
+    INIT:
+        int mib[CTL_MAXNAME+2];
+        size_t miblen;
+        size_t off;
+        int j;
+
+    CODE:
+        mib[0] = 0;
+        mib[1] = 2;
+        off = 2;
+        cur += sizeof(int);
+        while (len--) {
+            cur += sizeof(int);
+            mib[off++] = (int)(*cur);
+        }
+
 SV *
 _mib_info(const char *arg)
     INIT:

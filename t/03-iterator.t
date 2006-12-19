@@ -10,3 +10,5 @@ use BSD::Sysctl;
 
 my $it = BSD::Sysctl->iterator('kern.ipc');
 ok( defined($it), 'defined a BSD::Sysctl iterator' );
+
+$it->next;
