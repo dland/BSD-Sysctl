@@ -72,17 +72,6 @@ sub new {
     return bless \$name, $class;
 }
 
-sub iterator {
-    my $class = shift;
-    my $name  = shift;
-    return undef unless exists $MIB_CACHE{$name} or _mib_info($name);
-    my $mib = $MIB_CACHE{$name};
-    return bless {
-        head => $mib,
-        cur  => $mib
-    }, $class;
-}
-
 sub get {
     my $self = shift;
     return _mib_lookup($$self);
@@ -91,6 +80,45 @@ sub get {
 sub set {
     my $self = shift;
     return _mib_set($$self, @_);
+}
+
+sub iterator {
+    my $class = shift;
+    my $name  = shift;
+    my $self;
+    if ($name) {
+        return undef unless exists $MIB_CACHE{$name} or _mib_info($name);
+        my $mib = $MIB_CACHE{$name};
+        $self = {
+            head => $mib,
+        };
+    }
+    else {
+        $self = {
+            head => undef,
+        };
+    }
+    return bless $self, $class;
+}
+
+sub next {
+    my $self = shift;
+    my $cur = $self->{cur};
+    my $next;
+    if (defined $cur) {
+        $next = _next($cur);
+    }
+    else {
+        if (defined($self->{head})) {
+            my $head = $self->{head};
+            my $len = (() = unpack('i i/i', $head)) - 1;
+            $next = _next($len, $head);
+        }
+        else {
+            $next = _next(0, '');
+        }
+    }
+    $self->{cur} = $next;
 }
 
 XSLoader::load 'BSD::Sysctl', $VERSION;
@@ -231,8 +259,6 @@ C<undef> on failure.
 
   $variable->set(99);
 
-=back
-
 =item iterator
 
 Creates an iterator that may be used to walk through the sysctl
@@ -274,6 +300,8 @@ currently pointing at.
 The iterator is reset back to before the first sysctl variable
 it initially began with (in other words, C<next> must be
 called afterwards, in order to fetch the first variable.
+
+=back
 
 =head1 NOTES
 
