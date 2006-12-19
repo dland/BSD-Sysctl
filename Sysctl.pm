@@ -72,6 +72,17 @@ sub new {
     return bless \$name, $class;
 }
 
+sub iterator {
+    my $class = shift;
+    my $name  = shift;
+    return undef unless exists $MIB_CACHE{$name} or _mib_info($name);
+    my $mib = $MIB_CACHE{$name};
+    return bless {
+        head => $mib,
+        cur  => $mib
+    }, $class;
+}
+
 sub get {
     my $self = shift;
     return _mib_lookup($$self);
@@ -221,6 +232,48 @@ C<undef> on failure.
   $variable->set(99);
 
 =back
+
+=item iterator
+
+Creates an iterator that may be used to walk through the sysctl
+variable tree. If no parameter is given, the iterator defaults
+to the first entry of the tree. Otherwise, if a paramter is
+given, it is decoded as a sysctl variable. If the decoding
+fails, undef is returned.
+
+  my $k = BSD::Sysctl->iterator( 'kern' );
+  while ($k->next) {
+    print $k->name, '=', $k->value, "\n";
+  }
+
+=item next
+
+Moves the iterator to the next sysctl variable and loads the
+variable's name and its current value.
+
+=item name
+
+Returns the name of the sysctl variable that the iterator
+is currently pointing at. If the iterator has not started to
+look at the tree (that is, C<next> has not yet been called),
+undef is returned.
+
+=item value
+
+Returns the value of the sysctl variable that the iterator
+is currently pointing at. If the iterator has not started to
+look at the tree, undef is returned.
+
+=item refresh
+
+Refreshes the value of the variable that the iterator is
+currently pointing at.
+
+=item reset
+
+The iterator is reset back to before the first sysctl variable
+it initially began with (in other words, C<next> must be
+called afterwards, in order to fetch the first variable.
 
 =head1 NOTES
 
