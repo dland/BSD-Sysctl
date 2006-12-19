@@ -411,7 +411,7 @@ Copyright (C) 2006, all rights reserved.
 
 =head1 LICENSE
 
-This library is free software; you can redistribute it and/or modify
+This library is free software; you may redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
