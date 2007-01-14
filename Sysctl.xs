@@ -88,11 +88,13 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
         hv_store(self, "_len", 4, clen, 0);
     }
 
+    /*
     printf( "next: " );
     for (j = 0; j < qoidlen; ++j) {
         if (j) printf("."); printf("%d", qoid[j]);
     }
     printf("\n");
+    */
 
     /* load the mib */
     if (sysctl(qoid, qoidlen, mib, miblenp, 0, 0) == -1) {
@@ -103,9 +105,7 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
         return 0 ;
     }
 
-    printf( "len: c=%d m=%d\n", cmplen, *miblenp );
     for (j = 0; j < cmplen; ++j) {
-        printf( "check %d (%d %d)\n", j, mib[j], qoid[j+2]);
         if (mib[j] != qoid[j+2]) {
             return 0;
         }
@@ -139,12 +139,6 @@ next (SV *refself)
             miblen = *p++;
             memcpy(mib, p, miblen * sizeof(int));
 
-            printf( "recall: " );
-            for (j = 0; j < miblen; ++j) {
-                if (j) printf("."); printf("%d", mib[j]);
-            }
-            printf("\n");
-
             if (!_init_iterator(self, mib, &miblen, 1)) {
                 XSRETURN_UNDEF;
             }
@@ -156,22 +150,10 @@ next (SV *refself)
             }
         }
 
-        printf( "ready: " );
-        for (j = 0; j < miblen; ++j) {
-            if (j) printf("."); printf("%d", mib[j]);
-        }
-        printf("\n");
-
         qoid[0] = 0;
         qoid[1] = 1;
         memcpy(qoid+2, mib, miblen * sizeof(int));
         qoidlen = miblen + 2;
-
-        printf( "query: " );
-        for (j = 0; j < qoidlen; ++j) {
-            if (j) printf("."); printf("%d", qoid[j]);
-        }
-        printf("\n");
 
         bzero(name, BUFSIZ);
         namelen = sizeof(name);
@@ -181,12 +163,6 @@ next (SV *refself)
             XSRETURN_UNDEF;
         }
         RETVAL = newSVpvn(name, namelen);
-
-        printf( "after: " );
-        for (j = 0; j < miblen; ++j) {
-            if (j) printf("."); printf("%d", mib[j]);
-        }
-        printf("\n");
 
         /* reuse qoid to build context store
          *  - the length of the mib
