@@ -167,7 +167,7 @@ next (SV *refself)
             warn("next(): sysctl name failure %d %d %d", j, namelen, errno);
             XSRETURN_UNDEF;
         }
-        RETVAL = newSVpvn(name, namelen);
+        RETVAL = newSVpvn(name, namelen-1);
 
         /* reuse qoid to build context store
          *  - the length of the mib
