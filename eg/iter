@@ -1,0 +1,11 @@
+#! /usr/local/bin/perl -w
+
+use strict;
+use lib qw(blib/arch blib/lib);
+
+use BSD::Sysctl 'sysctl';
+
+my $iter = BSD::Sysctl->iterator( shift );
+while (my $x = $iter->next) {
+	print "$x: ", sysctl($x), "\n";
+}
