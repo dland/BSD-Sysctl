@@ -46,6 +46,9 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
     SV **headp;
     int qoid[CTL_MAXNAME];
     u_int qoidlen;
+    SV *clen;
+    SV **clenp;
+    int cmplen;
     int j;
 
     qoid[0] = 0;
@@ -54,6 +57,8 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
         memcpy(qoid+2, mib, (*miblenp) * sizeof(int));
         qoidlen = *miblenp + 2;
         *miblenp = (CTL_MAXNAME+2) * sizeof(int);
+        clenp = hv_fetch(self, "_len", 4, 0);
+        cmplen = SvIV(*clenp);
     }
     else {
         headp = hv_fetch(self, "head", 4, 0);
@@ -69,13 +74,18 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
                 );
                 return 0;
             }
+            cmplen = qoidlen;
             qoidlen += 2;
         }
         else {
             /* begin at the beginning */
             qoid[2] = 1;
+            cmplen  = 0;
             qoidlen = 3;
         }
+        clen = newSViv(cmplen);
+        SvREFCNT_inc(clen);
+        hv_store(self, "_len", 4, clen, 0);
     }
 
     printf( "next: " );
@@ -86,14 +96,17 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
 
     /* load the mib */
     if (sysctl(qoid, qoidlen, mib, miblenp, 0, 0) == -1) {
-        warn( "_init_iterator(): sysctl lookup failed\n" );
         return 0;
     }
     *miblenp /= sizeof(int);
-    printf( "len: q=%d m=%d\n", qoidlen, *miblenp );
-    for (j = 0; j < *miblenp - 1; ++j) {
+    if (*miblenp < cmplen) {
+        return 0 ;
+    }
+
+    printf( "len: c=%d m=%d\n", cmplen, *miblenp );
+    for (j = 0; j < cmplen; ++j) {
         printf( "check %d (%d %d)\n", j, mib[j], qoid[j+2]);
-        if (valid && mib[j] != qoid[j+2]) {
+        if (mib[j] != qoid[j+2]) {
             return 0;
         }
     }
