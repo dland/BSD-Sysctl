@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.09';
+$VERSION = '0.08';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -90,6 +90,12 @@ sub iterator {
     return bless $self, $class;
 }
 
+sub reset {
+    my $self = shift;
+	delete $self->{_ctx};
+	return $self;
+}
+
 XSLoader::load 'BSD::Sysctl', $VERSION;
 
 =head1 NAME
@@ -98,7 +104,7 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.09 of BSD::Sysctl, released
+This document describes version 0.08 of BSD::Sysctl, released
 2007-mm-dd.
 
 =head1 SYNOPSIS
