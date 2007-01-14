@@ -1,10 +1,9 @@
 Revision history for Perl extension BSD::Sysctl
 
-0.09
+0.08
     - Added an iterator() method to permit iterations through
       the variable tree.
-
-0.08
+    - An iterator may be reset().
     - For the sysctl variables that correspond to C structs that we
       decode, if the OS version does not define a member, then create
       the hash key anyway, and set it to an empty string. This allows
