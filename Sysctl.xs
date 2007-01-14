@@ -181,8 +181,7 @@ next (SV *refself)
          * and copy to an SV to save in the self hash
          */
         p = qoid;
-        memcpy(p, (const void *)&miblen, sizeof(int));
-        p++;
+        memcpy(p++, (const void *)&miblen, sizeof(int));
         memcpy(p, (const void *)mib, miblen * sizeof(int));
 
         ctx = newSVpvn((const char *)qoid, (miblen+1) * sizeof(int));
