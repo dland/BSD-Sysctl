@@ -1,6 +1,6 @@
 # BSD::Sysctl.pm - Access BSD sysctl(8) information directly
 #
-# Copyright (C) 2006 David Landgren, all rights reserved.
+# Copyright (C) 2006-2007 David Landgren, all rights reserved.
 
 package BSD::Sysctl;
 
@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.08';
+$VERSION = '0.09';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -98,8 +98,8 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.08 of BSD::Sysctl, released
-2006-10-22.
+This document describes version 0.09 of BSD::Sysctl, released
+2007-mm-dd.
 
 =head1 SYNOPSIS
 
@@ -376,7 +376,7 @@ Douglas Steinwand added support for the amd64 platform in release
 
 David Landgren.
 
-Copyright (C) 2006, all rights reserved.
+Copyright (C) 2006-2007, all rights reserved.
 
 =head1 LICENSE
 

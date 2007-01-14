@@ -1,3 +1,8 @@
+/* Sysctl.xs -- XS component of BSD-Sysctl
+ *
+ * Copyright (C) 2006-2007 David Landgren
+ */
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
