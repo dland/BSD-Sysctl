@@ -1,10 +1,5 @@
 TODO list for BSD::Sysctl
 
-2. Permit the traversal (with iterators) of sysctl branches (e.g.
-'kern.*')
-
-3. Decode 'kern.proc.pid.<process-id>'
-
 4. Offer a tie interface?
    tie my $loadavg, 'BSD::Sysctl', 'vm.loadavg', {offset=>0};
    while(1) {
