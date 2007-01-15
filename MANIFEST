@@ -6,6 +6,7 @@ TODO
 README
 Sysctl.pm
 Sysctl.xs
+typemap
 eg/battery
 eg/benchmark
 eg/check_hv_store
