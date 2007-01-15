@@ -11,10 +11,20 @@ use BSD::Sysctl;
 my $it = BSD::Sysctl->iterator('kern.ipc');
 ok( defined($it), 'defined a BSD::Sysctl iterator' );
 
+my $sysctl_binary;
+for my $path (qw( /sbin /bin /usr/sbin/ /usr/bin /usr/local/sbin /usr/local/bin )) {
+    my $binary = "$path/sysctl";
+    if (-x $binary) {
+        $sysctl_binary = $binary;
+        last;
+    }
+}
+
 SKIP: {
-    my @sysctl = `sysctl -Na kern.ipc`;
-    skip( 'failed to backtick sysctl binary', 4 )
-        unless @sysctl;
+    skip( 'failed to find sysctl binary', 4 )
+        unless defined $sysctl_binary;
+
+    my @sysctl = `$sysctl_binary -Na kern.ipc`;
     my $x = $it->next;
     my $first = shift @sysctl;
     chomp $first;
@@ -26,17 +36,17 @@ SKIP: {
     ++$count while $it->next;
     is( $count, scalar(@sysctl), 'number of elements in subtree' );
 
-	$x = $it->reset->next;
+    $x = $it->reset->next;
     is( $first, $x, 'reset kern.ipc' ) or do {
         diag( "bin: " . join( ' ', map{ord} split //, $first));
         diag( " xs: " . join( ' ', map{ord} split //, $x));
     };
 
-    ($first) = `sysctl -Na`;
-	chomp $first;
+    ($first) = `$sysctl_binary -Na`;
+    chomp $first;
 
-	$it = BSD::Sysctl->iterator;
-	$x  = $it->next;
+    $it = BSD::Sysctl->iterator;
+    $x  = $it->next;
     is( $first, $x, 'iterate implicit' ) or do {
         diag( "bin: " . join( ' ', map{ord} split //, $first));
         diag( " xs: " . join( ' ', map{ord} split //, $x));
