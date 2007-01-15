@@ -368,7 +368,6 @@ _mib_lookup(const char *arg)
         /* warn("sysctl fmt=%d len=%d buflen=%d\n", oid_fmt, oid_len, buflen); */
         memcpy(mib, oid_data, oid_len * sizeof(int));
         if (sysctl(mib, oid_len, buf, &buflen, NULL, 0) == -1) {
-            warn("get sysctl %s failed\n", arg);
             XSRETURN_UNDEF;
         }
         /* warn(" now buflen=%d\n", buflen); */
