@@ -7,5 +7,18 @@ use BSD::Sysctl 'sysctl';
 
 my $iter = BSD::Sysctl->iterator( shift );
 while (my $x = $iter->next) {
-	print "$x: ", sysctl($x), "\n";
+    my $val = sysctl($x);
+    if (!defined $val) {
+        $val = '<undef>';
+    }
+    elsif (ref $val eq 'HASH') {
+        $val = "{\n  "
+            . join( "\n  ", map { "$_ => $val->{$_}" } sort keys %$val )
+            . "\n}"
+        ;
+    }
+    elsif (ref $val eq 'ARRAY') {
+        $val = "[@$val]";
+    }
+    print "$x: $val\n";
 }
