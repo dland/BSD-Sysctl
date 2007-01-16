@@ -134,6 +134,7 @@ next (SV *refself)
         HV *self;
         SV **ctxp;
         SV *ctx;
+        SV *cname;
         int j;
         int *p;
 
@@ -167,7 +168,10 @@ next (SV *refself)
             warn("next(): sysctl name failure %d %d %d", j, namelen, errno);
             XSRETURN_UNDEF;
         }
-        RETVAL = newSVpvn(name, namelen-1);
+        cname = newSVpvn(name, namelen-1);
+        SvREFCNT_inc(cname);
+        hv_store(self, "_name", 5, cname, 0);
+        RETVAL = cname;
 
         /* reuse qoid to build context store
          *  - the length of the mib

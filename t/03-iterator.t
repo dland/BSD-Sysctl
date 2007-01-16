@@ -4,7 +4,7 @@
 # Copyright (C) 2006 David Landgren
 
 use strict;
-use Test::More tests => 5;
+use Test::More tests => 8;
 
 use BSD::Sysctl;
 
@@ -51,4 +51,14 @@ SKIP: {
         diag( "bin: " . join( ' ', map{ord} split //, $first));
         diag( " xs: " . join( ' ', map{ord} split //, $x));
     };
+}
+
+{
+    my $iter = BSD::Sysctl->iterator('vfs');
+    my $first = $iter->next;
+    is( $iter->name, $first, 'name of first iterator' );
+
+    my $next = $iter->next;
+    is( $iter->name, $next, 'name of next iterator' );
+    isnt( $first, $next, 'next is different' );
 }

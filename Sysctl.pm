@@ -90,10 +90,15 @@ sub iterator {
     return bless $self, $class;
 }
 
+sub name {
+    my $self = shift;
+    return $self->{_name};
+}
+
 sub reset {
     my $self = shift;
-	delete $self->{_ctx};
-	return $self;
+    delete $self->{_ctx};
+    return $self;
 }
 
 XSLoader::load 'BSD::Sysctl', $VERSION;
@@ -349,12 +354,18 @@ for more information.
 
 =head1 BUGS
 
-This is my first XS module. I may be doing wild and dangerous things
-and not realise it. Gentle nudges in the right direction will be
-gratefully received.
+Some branches are not iterated on FreeBSD 4 (and perl 5.6.1). Most
+notably, the C<vm.stats> branch. I am not sure of the reason, but
+it's a failure in a C<sysctl> system call, so it could be related
+to that release. As FreeBSD 4.x will reach the end of its supported
+life in 2007, I'm not particularly fussed.
 
 Some sysctl values are 64-bit quantities. I am not all sure that
 these are handled correctly.
+
+This is my first XS module. I may be doing wild and dangerous things
+and not realise it. Gentle nudges in the right direction will be
+gratefully received.
 
 Please report all bugs at
 L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=BSD-Sysctl|rt.cpan.org>.
