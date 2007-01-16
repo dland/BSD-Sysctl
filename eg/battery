@@ -4,9 +4,9 @@ use strict;
 use BSD::Sysctl;
 
 my $batt = BSD::Sysctl->new('hw.acpi.battery.life')
-	or die "hw.acpi.battery.life not found\n";
+    or die "hw.acpi.battery.life not found\n";
 
 while (1) {
-	print $batt->get, $/;
-	sleep 60;
+    print $batt->get, $/;
+    sleep 60;
 }
