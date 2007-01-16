@@ -4,7 +4,7 @@
 # Copyright (C) 2006 David Landgren
 
 use strict;
-use Test::More tests => 8;
+use Test::More tests => 12;
 
 use BSD::Sysctl;
 
@@ -55,10 +55,15 @@ SKIP: {
 
 {
     my $iter = BSD::Sysctl->iterator('vfs');
+    ok( !defined($iter->name), 'no name before next' );
+    ok( !defined($iter->value), 'no value before next' );
+
     my $first = $iter->next;
     is( $iter->name, $first, 'name of first iterator' );
+    ok( defined($iter->value), 'value of first' );
 
     my $next = $iter->next;
     is( $iter->name, $next, 'name of next iterator' );
     isnt( $first, $next, 'next is different' );
+    ok( defined($iter->value), 'value of next' );
 }
