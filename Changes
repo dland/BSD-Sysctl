@@ -1,16 +1,18 @@
 Revision history for Perl extension BSD::Sysctl
 
-0.08
+0.08 2007-01-16 21:28:29 UTC
     - Added an iterator() method to permit iterations through
       the variable tree.
-    - An iterator may be reset().
+    - An iterator may be reset(), its points to something with
+      a name() and a value().
     - For the sysctl variables that correspond to C structs that we
       decode, if the OS version does not define a member, then create
       the hash key anyway, and set it to an empty string. This allows
       cross-version programs to work with fewer version checks.
     - Rationalised the example programs.
+    - Added a typemap for Perl 5.6
 
-0.07 2006-10-22
+0.07 2006-10-22 10:17:00 UTC
     - Didn't realise that there was another test for kern.lastpid
       in t/01-get.t
 
