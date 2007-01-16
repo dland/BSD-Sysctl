@@ -17,9 +17,9 @@ is(ref($osrelease), 'BSD::Sysctl', 'in the right class');
 
 my $revision = 'unknown';
 eval {
-	my $release = $osrelease->get();
-	$revision = BSD::Sysctl::sysctl('kern.osrevision');
-	diag("platform info: release=$release, revision=$revision.");
+    my $release = $osrelease->get();
+    $revision = BSD::Sysctl::sysctl('kern.osrevision');
+    diag("platform info: release=$release, revision=$revision.");
 };
 $@ and diag("eval failure: [$@]");
 
