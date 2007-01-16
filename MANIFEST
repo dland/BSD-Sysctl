@@ -2,10 +2,11 @@ Changes
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP
-TODO
+META.yml			Module meta-data (added by MakeMaker)
 README
 Sysctl.pm
 Sysctl.xs
+TODO
 typemap
 eg/battery
 eg/benchmark
@@ -21,4 +22,3 @@ t/00-basic.t
 t/01-get.t
 t/02-set.t
 t/03-iterator.t
-META.yml			Module meta-data (added by MakeMaker)
