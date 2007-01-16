@@ -95,6 +95,12 @@ sub name {
     return $self->{_name};
 }
 
+sub value {
+    my $self = shift;
+    return undef unless exists $self->{_name};
+    return sysctl($self->{_name});
+}
+
 sub reset {
     my $self = shift;
     delete $self->{_ctx};
@@ -268,12 +274,11 @@ undef is returned.
 
 Returns the value of the sysctl variable that the iterator
 is currently pointing at. If the iterator has not started to
-look at the tree, undef is returned.
+look at the tree, undef is returned. Subsequent calls to
+value() will perform a fresh fetch on the current sysctl
+variable that the iterator is pointing at.
 
-=item refresh
-
-Refreshes the value of the variable that the iterator is
-currently pointing at.
+Some return values are references to hashes or arrays.
 
 =item reset
 
