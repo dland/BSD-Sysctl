@@ -3,11 +3,11 @@
 use strict;
 use lib qw(blib/arch blib/lib);
 
-use BSD::Sysctl 'sysctl';
+use BSD::Sysctl;
 
 my $iter = BSD::Sysctl->iterator( shift );
-while (my $x = $iter->next) {
-    my $val = sysctl($x);
+while ($iter->next) {
+    my $val = $iter->value;
     if (!defined $val) {
         $val = '<undef>';
     }
@@ -20,5 +20,5 @@ while (my $x = $iter->next) {
     elsif (ref $val eq 'ARRAY') {
         $val = "[@$val]";
     }
-    print "$x: $val\n";
+    print $iter->name, ": $val\n";
 }
