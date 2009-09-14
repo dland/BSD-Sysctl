@@ -16,10 +16,8 @@ contents into Sysctl.pm when copying to blib/lib.
 
 8. Add Makefile rules to deal with changes to mibfmt.map
 
-9. Test FreeBSD 4.x and 5.x more extensively. Currently, the
-code has only been tweaked sufficiently to get the damned
-thing to compile. eg/mib_scan.pl reports that a number of more
-obscure variables are not fetched correctly. The failures need
+9. eg/mib_scan.pl reports that a number of more obscure
+variables are not fetched correctly. The failures need
 to be diagnosed.
 
 10. Obtain access to NetBSD and OpenBSD platforms.

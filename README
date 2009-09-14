@@ -1,4 +1,4 @@
-This file is the README for BSD::Sysctl version 0.08
+This file is the README for BSD::Sysctl version 0.09
 
 INSTALLATION
 
@@ -9,8 +9,8 @@ make install
 
 Building this module requires a FreeBSD system and a C compiler.
 Support for OpenBSD and NetBSD will appear in future releases. In
-theory, any system that uses a sysctl interface to the kernel should
-be able to be handled by this module.
+theory, this module should be able to handle any system that uses
+a sysctl interface to the kernel.
 
 UNINSTALLATION
 
