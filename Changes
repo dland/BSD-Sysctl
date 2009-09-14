@@ -1,5 +1,9 @@
 Revision history for Perl extension BSD::Sysctl
 
+0.09 2009-09-14 17:52:15 UTC
+    - Added support for 8.0, better handling of kern.geom.confxml
+      et al., and an example, courtesy of Sergey Skvortsov.
+
 0.08 2007-01-16 21:28:29 UTC
     - Added an iterator() method to permit iterations through
       the variable tree.

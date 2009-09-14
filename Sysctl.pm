@@ -1,6 +1,6 @@
 # BSD::Sysctl.pm - Access BSD sysctl(8) information directly
 #
-# Copyright (C) 2006-2007 David Landgren, all rights reserved.
+# Copyright (C) 2006-2009 David Landgren, all rights reserved.
 
 package BSD::Sysctl;
 
@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.08';
+$VERSION = '0.09';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -115,8 +115,8 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.08 of BSD::Sysctl, released
-2007-01-16.
+This document describes version 0.09 of BSD::Sysctl, released
+2009-09-14.
 
 =head1 SYNOPSIS
 
@@ -394,11 +394,15 @@ L<IO::KQueue> - monitor changes on sockets, files, processes and signals.
 Douglas Steinwand added support for the amd64 platform in release
 0.04.
 
+Sergey Skvortsov provided a patch to improve the handling of large
+XML sysctl values, such as C<kern.geom.confxml>, and fixed the
+build for FreeBSD 8.x.
+
 =head1 AUTHOR
 
 David Landgren.
 
-Copyright (C) 2006-2007, all rights reserved.
+Copyright (C) 2006-2009, all rights reserved.
 
 =head1 LICENSE
 

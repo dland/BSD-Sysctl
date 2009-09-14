@@ -12,6 +12,7 @@ eg/battery
 eg/benchmark
 eg/check_hv_store
 eg/fmt.c
+eg/geom_disks
 eg/iter
 eg/kernpid.c
 eg/mibble

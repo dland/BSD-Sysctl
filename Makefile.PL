@@ -7,7 +7,7 @@ use Config;
 my $module_name = 'BSD::Sysctl';
 
 if ($Config{osname} ne 'freebsd') {
-    die "$module_name does not support the ($Config{osname}) platform.\n";
+    die "OS unsupported ($Config{osname}). Here's a nickel, go buy yourself a real OS.\n";
 }
 
 my %define;

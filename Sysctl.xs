@@ -1,6 +1,6 @@
 /* Sysctl.xs -- XS component of BSD-Sysctl
  *
- * Copyright (C) 2006-2007 David Landgren
+ * Copyright (C) 2006-2009 David Landgren
  */
 
 #include "EXTERN.h"
@@ -73,7 +73,7 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
         if (SvPOK(*headp)) {
             /* begin where asked */
             qoidlen = sizeof(qoid);
-            if (sysctlnametomib( SvPV_nolen(*headp), qoid+2, &qoidlen) == -1) {
+            if (sysctlnametomib( SvPV_nolen(*headp), qoid+2, (size_t*)&qoidlen) == -1) {
                 warn( "_init_iterator(%s): sysctlnametomib lookup failed\n",
                     SvPV_nolen(*headp)
                 );
@@ -102,7 +102,7 @@ _init_iterator(HV *self, int *mib, int *miblenp, int valid) {
     */
 
     /* load the mib */
-    if (sysctl(qoid, qoidlen, mib, miblenp, 0, 0) == -1) {
+    if (sysctl(qoid, qoidlen, mib, (size_t*)miblenp, 0, 0) == -1) {
         return 0;
     }
     *miblenp /= sizeof(int);
@@ -145,13 +145,13 @@ next (SV *refself)
             miblen = *p++;
             memcpy(mib, p, miblen * sizeof(int));
 
-            if (!_init_iterator(self, mib, &miblen, 1)) {
+            if (!_init_iterator(self, mib, (int*)&miblen, 1)) {
                 XSRETURN_UNDEF;
             }
         }
         else {
             miblen = sizeof(mib)/sizeof(mib[0]);
-            if (!_init_iterator(self, mib, &miblen, 0)) {
+            if (!_init_iterator(self, mib, (int*)&miblen, 0)) {
                 XSRETURN_UNDEF;
             }
         }
@@ -344,7 +344,8 @@ _mib_lookup(const char *arg)
         char *oid_data;
         int oid_fmt;
         int oid_len;
-        char buf[BUFSIZ*10];
+        SV *sv_buf;
+        char *buf;
         size_t buflen = sizeof(buf);
 
     CODE:
@@ -369,8 +370,17 @@ _mib_lookup(const char *arg)
         oid_len  = (int)(*oid_data);
         oid_data += sizeof(int);
         
-        /* warn("sysctl fmt=%d len=%d buflen=%d\n", oid_fmt, oid_len, buflen); */
         memcpy(mib, oid_data, oid_len * sizeof(int));
+
+        /* determine buffer size */
+        if (sysctl(mib, oid_len, NULL, &buflen, NULL, 0) == -1) {
+            XSRETURN_UNDEF;
+        }
+
+        sv_buf = newSV(buflen);
+        buf = SvPVX(sv_buf);
+
+        /* warn("sysctl fmt=%d len=%d buflen=%d\n", oid_fmt, oid_len, buflen); */
         if (sysctl(mib, oid_len, buf, &buflen, NULL, 0) == -1) {
             XSRETURN_UNDEF;
         }
@@ -378,12 +388,9 @@ _mib_lookup(const char *arg)
 
         switch(oid_fmt) {
         case FMT_A:
-            if (buflen > 0) {
-                RETVAL = newSVpvn(buf, buflen-1);
-            }
-            else {
-                RETVAL = newSVpvn("", 0);
-            }
+        SvPOK_on(sv_buf);
+        SvCUR_set(sv_buf, buflen);
+            RETVAL = sv_buf;
             break;
         case FMT_INT:
             if (buflen == sizeof(int)) {
@@ -591,6 +598,7 @@ _mib_lookup(const char *arg)
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct igmpstat *inf = (struct igmpstat *)buf;
             RETVAL = newRV((SV *)c);
+#if __FreeBSD_version < 800070
             hv_store(c, "total",       5, newSVuv(inf->igps_rcv_total), 0);
             hv_store(c, "tooshort",    8, newSVuv(inf->igps_rcv_tooshort), 0);
             hv_store(c, "badsum",      6, newSVuv(inf->igps_rcv_badsum), 0);
@@ -600,6 +608,28 @@ _mib_lookup(const char *arg)
             hv_store(c, "badreports", 10, newSVuv(inf->igps_rcv_badreports), 0);
             hv_store(c, "ourreports", 10, newSVuv(inf->igps_rcv_ourreports), 0);
             hv_store(c, "sent",        4, newSVuv(inf->igps_snd_reports), 0);
+#else
+            /* Message statistics */
+            hv_store(c, "total",             5, newSVuv(inf->igps_rcv_total), 0);
+            hv_store(c, "tooshort",          8, newSVuv(inf->igps_rcv_tooshort), 0);
+            hv_store(c, "badttl",            6, newSVuv(inf->igps_rcv_badttl), 0);
+            hv_store(c, "badsum",            6, newSVuv(inf->igps_rcv_badsum), 0);
+            /* Query statistics */
+            hv_store(c, "queries",           7, newSVuv(inf->igps_rcv_v1v2_queries + inf->igps_rcv_v3_queries), 0);
+            hv_store(c, "v1v2_queries",     12, newSVuv(inf->igps_rcv_v1v2_queries), 0);
+            hv_store(c, "v3_queries",       10, newSVuv(inf->igps_rcv_v3_queries), 0);
+            hv_store(c, "badqueries",       10, newSVuv(inf->igps_rcv_badqueries), 0);
+            hv_store(c, "gen_queries",      11, newSVuv(inf->igps_rcv_gen_queries), 0);
+            hv_store(c, "group_queries",    13, newSVuv(inf->igps_rcv_group_queries), 0);
+            hv_store(c, "gsr_queries",      11, newSVuv(inf->igps_rcv_gsr_queries), 0);
+            hv_store(c, "drop_gsr_queries", 16, newSVuv(inf->igps_drop_gsr_queries), 0);
+            /* Report statistics */
+            hv_store(c, "reports",           7, newSVuv(inf->igps_rcv_reports), 0);
+            hv_store(c, "badreports",       10, newSVuv(inf->igps_rcv_badreports), 0);
+            hv_store(c, "ourreports",       10, newSVuv(inf->igps_rcv_ourreports), 0);
+            hv_store(c, "nore",              4, newSVuv(inf->igps_rcv_nora), 0);
+            hv_store(c, "sent",              4, newSVuv(inf->igps_snd_reports), 0);
+#endif
             break;
         }
         case FMT_TCPSTAT: {
@@ -786,13 +816,18 @@ _mib_lookup(const char *arg)
         case FMT_XINPCB:
         case FMT_STRUCT_CDEV:
             /* don't know how to interpret the results */
+            SvREFCNT_dec(sv_buf);
             XSRETURN_IV(0);
             break;
         default:
             warn("%s: unhandled format type=%d\n", arg, oid_fmt);
+            SvREFCNT_dec(sv_buf);
             XSRETURN_IV(0);
             break;
         }
+
+        if ( oid_fmt != FMT_A )
+            SvREFCNT_dec(sv_buf);
 
     OUTPUT:
         RETVAL
