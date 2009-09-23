@@ -1,10 +1,10 @@
 # 03-iterator.t
 # Basic sanity checks for BSD::Sysctl
 #
-# Copyright (C) 2006 David Landgren
+# Copyright (C) 2006-2009 David Landgren
 
 use strict;
-use Test::More tests => 12;
+use Test::More tests => 14;
 
 use BSD::Sysctl;
 
@@ -66,4 +66,24 @@ SKIP: {
     is( $iter->name, $next, 'name of next iterator' );
     isnt( $first, $next, 'next is different' );
     ok( defined($iter->value), 'value of next' );
+}
+
+{
+    my $iter = BSD::Sysctl->iterator('');
+    my $item = 0;
+    while ($iter->next) {
+        my $dummy  = $iter->name;
+        ++$item;
+    }
+    # the above fails if the XS dumps core, thus the following test isn't hit
+    cmp_ok( $item, '>', 0, "iterated through $item names" );
+
+    $iter->reset;
+    $item = 0;
+    while ($iter->next) {
+        my $dummy  = $iter->value;
+        ++$item;
+    }
+    # ditto, this time checking the value method
+    cmp_ok( $item, '>', 0, "iterated through $item values" );
 }
