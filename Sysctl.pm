@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.09';
+$VERSION = '0.10';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -40,6 +40,8 @@ use constant FMT_VMTOTAL     => 22;
 use constant FMT_XINPCB      => 23;
 use constant FMT_XVFSCONF    => 24;
 use constant FMT_STRUCT_CDEV => 25;
+use constant FMT_64          => 26;
+use constant FMT_U64         => 27;
 
 push @EXPORT_OK, 'sysctl';
 sub sysctl {
@@ -115,8 +117,8 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.09 of BSD::Sysctl, released
-2009-09-14.
+This document describes version 0.10 of BSD::Sysctl, released
+2009-09-25.
 
 =head1 SYNOPSIS
 
@@ -126,7 +128,7 @@ This document describes version 0.09 of BSD::Sysctl, released
   print sysctl('kern.lastpid'); # 20621
 
   my $loadavg = sysctl('vm.loadavg');
-  print $loadavg->[1]; # 0.1279 (5 minute load average)
+  print $loadavg->[1]; # 0.6127 (5 minute load average)
 
   my $vm = sysctl('vm.vmtotal');
   print "number of free pages: $vm->{pagefree}\n";
@@ -290,8 +292,6 @@ called afterwards, in order to fetch the first variable.
 
 =head1 NOTES
 
-Note: this is a beta release.
-
 Yes, you could manipulate C<sysctl> variables directly from Perl
 using the C<syscall> routine, however, you would have to have to
 jump through various arduous hoops, such as performing the
@@ -326,7 +326,7 @@ input into anything that resembled an integer. Solution: check your
 input.
 
 Similar warnings occur with unigned ints, longs and unsigned longs.
-In all cases, the variable retains its initial value.
+In all cases, the value of the sysctl variable is unchanged.
 
   "uncached mib: [sysctl name]"
 
@@ -349,7 +349,7 @@ at least for the time being. This is a bug that should be reported.
 
 =head1 LIMITATIONS
 
-At the current time, only FreeBSD versions 4.x through 6.x are
+At the current time, FreeBSD versions 4.x through 8.x are
 supported.
 
 I am looking for volunteers to help port this module to NetBSD and
@@ -362,11 +362,8 @@ for more information.
 Some branches are not iterated on FreeBSD 4 (and perl 5.6.1). Most
 notably, the C<vm.stats> branch. I am not sure of the reason, but
 it's a failure in a C<sysctl> system call, so it could be related
-to that release. As FreeBSD 4.x will reach the end of its supported
+to that release. As FreeBSD 4.x reached the end of its supported
 life in 2007, I'm not particularly fussed.
-
-Some sysctl values are 64-bit quantities. I am not all sure that
-these are handled correctly.
 
 This is my first XS module. I may be doing wild and dangerous things
 and not realise it. Gentle nudges in the right direction will be
@@ -396,7 +393,13 @@ Douglas Steinwand added support for the amd64 platform in release
 
 Sergey Skvortsov provided a patch to improve the handling of large
 XML sysctl values, such as C<kern.geom.confxml>, and fixed the
-build for FreeBSD 8.x.
+build for FreeBSD 8.x in version 0.09.
+
+Emil Mikulic supplied the code to have 64-bit variables retrieved
+correctly in version 0.10.
+
+Various people keep the FreeBSD port up to date; their efforts are
+greatly appreciated.
 
 =head1 AUTHOR
 
