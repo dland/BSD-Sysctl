@@ -241,6 +241,10 @@ _mib_info(const char *arg)
             ++f;
             fmt_type = *f == 'U' ? FMT_ULONG : FMT_LONG;
             break;
+        case 'Q':
+            ++f;
+            fmt_type = *f == 'U' ? FMT_U64 : FMT_64;
+            break;
         case 'S': {
             if (strcmp(f,"S,clockinfo") == 0)    { fmt_type = FMT_CLOCKINFO; }
             else if (strcmp(f,"S,loadavg") == 0) { fmt_type = FMT_LOADAVG; }
@@ -448,6 +452,36 @@ _mib_lookup(const char *arg)
                     av_push(c, newSVuv(*(unsigned long *)bptr));
                     buflen -= sizeof(unsigned long);
                     bptr   += sizeof(unsigned long);
+                }
+                RETVAL = newRV((SV *)c);
+            }
+            break;
+        case FMT_64:
+            if (buflen == sizeof(int64_t)) {
+                RETVAL = newSVuv(*(int64_t *)buf);
+            }
+            else {
+                AV *c = (AV *)sv_2mortal((SV *)newAV());
+                char *bptr = buf;
+                while (buflen >= sizeof(int64_t)) {
+                    av_push(c, newSVuv(*(int64_t *)bptr));
+                    buflen -= sizeof(int64_t);
+                    bptr   += sizeof(int64_t);
+                }
+                RETVAL = newRV((SV *)c);
+            }
+            break;
+        case FMT_U64:
+            if (buflen == sizeof(uint64_t)) {
+                RETVAL = newSVuv(*(uint64_t *)buf);
+            }
+            else {
+                AV *c = (AV *)sv_2mortal((SV *)newAV());
+                char *bptr = buf;
+                while (buflen >= sizeof(uint64_t)) {
+                    av_push(c, newSVuv(*(uint64_t *)bptr));
+                    buflen -= sizeof(uint64_t);
+                    bptr   += sizeof(uint64_t);
                 }
                 RETVAL = newRV((SV *)c);
             }
