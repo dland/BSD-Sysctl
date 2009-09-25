@@ -4,7 +4,7 @@
 # Copyright (C) 2006-2009 David Landgren
 
 use strict;
-use Test::More tests => 14;
+use Test::More tests => 15;
 
 use BSD::Sysctl;
 
@@ -70,20 +70,22 @@ SKIP: {
 
 {
     my $iter = BSD::Sysctl->iterator('');
-    my $item = 0;
+    my $name_count = 0;
     while ($iter->next) {
         my $dummy  = $iter->name;
-        ++$item;
+        ++$name_count;
     }
     # the above fails if the XS dumps core, thus the following test isn't hit
-    cmp_ok( $item, '>', 0, "iterated through $item names" );
+    cmp_ok( $name_count, '>', 0, "iterated through $name_count names" );
 
     $iter->reset;
-    $item = 0;
+    my $value_count = 0;
     while ($iter->next) {
         my $dummy  = $iter->value;
-        ++$item;
+        ++$value_count;
     }
     # ditto, this time checking the value method
-    cmp_ok( $item, '>', 0, "iterated through $item values" );
+    cmp_ok( $value_count, '>', 0, "iterated through $value_count values" );
+
+    is($name_count, $value_count, "read as many names as values" );
 }
