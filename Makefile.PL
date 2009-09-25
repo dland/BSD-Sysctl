@@ -117,3 +117,5 @@ S,vmtotal	22	auto
 S,xinpcb	23	auto
 S,xvfsconf	24	auto
 T,struct_cdev	25	auto
+Q	26	FMT_64
+QU	27	FMT_U64
