@@ -376,20 +376,20 @@ _mib_lookup(const char *arg)
         if (sysctl(mib, oid_len, NULL, &buflen, NULL, 0) == -1) {
             XSRETURN_UNDEF;
         }
+        if (0 == buflen) {
+            XSRETURN_UNDEF;
+        }
 
         sv_buf = newSV(buflen);
-        buf = SvPVX(sv_buf);
-
-        /* warn("sysctl fmt=%d len=%d buflen=%d\n", oid_fmt, oid_len, buflen); */
+        buf    = SvPVX(sv_buf);
         if (sysctl(mib, oid_len, buf, &buflen, NULL, 0) == -1) {
             XSRETURN_UNDEF;
         }
-        /* warn(" now buflen=%d\n", buflen); */
 
         switch(oid_fmt) {
         case FMT_A:
-        SvPOK_on(sv_buf);
-        SvCUR_set(sv_buf, buflen);
+            SvPOK_on(sv_buf);
+            SvCUR_set(sv_buf, buflen);
             RETVAL = sv_buf;
             break;
         case FMT_INT:
@@ -826,8 +826,9 @@ _mib_lookup(const char *arg)
             break;
         }
 
-        if ( oid_fmt != FMT_A )
+        if (oid_fmt != FMT_A) {
             SvREFCNT_dec(sv_buf);
+        }
 
     OUTPUT:
         RETVAL
