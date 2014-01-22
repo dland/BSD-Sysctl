@@ -1,4 +1,5 @@
 Changes
+LICENSE
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP
@@ -12,7 +13,7 @@ eg/battery
 eg/benchmark
 eg/check_hv_store
 eg/fmt.c
-eg/geom_disks
+eg/geom-disks
 eg/iter
 eg/kernpid.c
 eg/mibble

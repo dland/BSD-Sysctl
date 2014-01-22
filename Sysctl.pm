@@ -1,6 +1,6 @@
 # BSD::Sysctl.pm - Access BSD sysctl(8) information directly
 #
-# Copyright (C) 2006-2009 David Landgren, all rights reserved.
+# Copyright (C) 2006-2014 David Landgren, all rights reserved.
 
 package BSD::Sysctl;
 
@@ -12,7 +12,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 @ISA     = qw(Exporter);
 
 use constant FMT_A           =>  1;
@@ -117,8 +117,8 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.10 of BSD::Sysctl, released
-2009-09-25.
+This document describes version 0.11 of BSD::Sysctl, released
+2014-01-22.
 
 =head1 SYNOPSIS
 
@@ -365,10 +365,6 @@ it's a failure in a C<sysctl> system call, so it could be related
 to that release. As FreeBSD 4.x reached the end of its supported
 life in 2007, I'm not particularly fussed.
 
-This is my first XS module. I may be doing wild and dangerous things
-and not realise it. Gentle nudges in the right direction will be
-gratefully received.
-
 Please report all bugs at
 L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=BSD-Sysctl|rt.cpan.org>.
 
@@ -376,9 +372,14 @@ A short snippet demonstrating the problem, along with the expected
 and actual output, and the version of BSD::Sysctl used, will be
 appreciated.
 
-I try to keep an eye on L<http://portsmon.freebsd.org/portoverview.py?category=sysutils&portname=p5-BSD-Sysctl> to see what problems are logged via the FreeBSD ports
-system, but using the CPAN RT bug tracking system is your best
-bet.
+I try to keep an eye on
+L<http://portsmon.freebsd.org/portoverview.py?category=sysutils&portname=p5-BSD-Sysctl>
+to see what problems are logged via the FreeBSD ports system, but
+using the CPAN RT bug tracking system is your best bet.
+
+The source code is on github: L<https://github.com/dland/BSD-Sysctl>,
+feel free to fork it and send me a pull request for enhancements
+and bug fixes.
 
 =head1 SEE ALSO
 
@@ -398,6 +399,10 @@ build for FreeBSD 8.x in version 0.09.
 Emil Mikulic supplied the code to have 64-bit variables retrieved
 correctly in version 0.10.
 
+Chris "BinGOs" Williams graciously provided me with access to a
+box running FreeBSD 10 to allow me to sort out what broke, and
+the fix appears in 0.11.
+
 Various people keep the FreeBSD port up to date; their efforts are
 greatly appreciated.
 
@@ -405,7 +410,7 @@ greatly appreciated.
 
 David Landgren.
 
-Copyright (C) 2006-2009, all rights reserved.
+Copyright (C) 2006-2014, all rights reserved.
 
 =head1 LICENSE
 
@@ -414,4 +419,4 @@ it under the same terms as Perl itself.
 
 =cut
 
-1;
+'The Lusty Decadent Delights of Imperial Pompeii';

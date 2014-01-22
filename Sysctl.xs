@@ -1,6 +1,6 @@
 /* Sysctl.xs -- XS component of BSD-Sysctl
  *
- * Copyright (C) 2006-2009 David Landgren
+ * Copyright (C) 2006-2014 David Landgren
  */
 
 #include "EXTERN.h"
@@ -19,7 +19,9 @@
 #include <sys/time.h>       /* struct clockinfo */
 #include <sys/vmmeter.h>    /* struct vmtotal */
 #include <sys/resource.h>   /* struct loadavg */
+#if __FreeBSD_version < 1000000
 #include <sys/mbuf.h>       /* struct mbstat (opaque mib) */
+#endif
 #include <sys/timex.h>      /* struct ntptimeval (opaque mib) */
 #include <sys/devicestat.h> /* struct devstat (opaque mib) */
 #include <sys/mount.h>      /* struct xvfsconf (opaque mib) */
@@ -140,7 +142,7 @@ next (SV *refself)
 
     CODE:
         self = (HV *)SvRV(refself);
-        if (ctxp = hv_fetch(self, "_ctx", 4, 0)) {
+        if ((ctxp = hv_fetch(self, "_ctx", 4, 0))) {
             p = (int *)SvPVX(*ctxp);
             miblen = *p++;
             memcpy(mib, p, miblen * sizeof(int));
@@ -165,7 +167,7 @@ next (SV *refself)
         namelen = sizeof(name);
         j = sysctl(qoid, qoidlen, name, &namelen, 0, 0);
         if (j || !namelen) {
-            warn("next(): sysctl name failure %d %d %d", j, namelen, errno);
+            warn("next(): sysctl name failure %d %zu %d", j, namelen, errno);
             XSRETURN_UNDEF;
         }
         cname = newSVpvn(name, namelen-1);
@@ -256,7 +258,7 @@ _mib_info(const char *arg)
             else if (strcmp(f,"S,icmpstat") == 0)   { fmt_type = FMT_ICMPSTAT; }
             else if (strcmp(f,"S,igmpstat") == 0)   { fmt_type = FMT_IGMPSTAT; }
             else if (strcmp(f,"S,ipstat") == 0)     { fmt_type = FMT_IPSTAT; }
-            else if (strcmp(f,"S,mbstat") == 0)     { fmt_type = FMT_MBSTAT; }
+            else if (strcmp(f,"S,mbstat") == 0)     { fmt_type = FMT_MBSTAT; } /* removed in FreeBSD 10 */
             else if (strcmp(f,"S,nfsrvstats") == 0) { fmt_type = FMT_NFSRVSTATS; }
             else if (strcmp(f,"S,nfsstats") == 0)   { fmt_type = FMT_NFSSTATS; }
             else if (strcmp(f,"S,ntptimeval") == 0) { fmt_type = FMT_NTPTIMEVAL; }
@@ -356,7 +358,7 @@ _mib_lookup(const char *arg)
         /* see if the mib exists */
         cache = get_hv("BSD::Sysctl::MIB_CACHE", 0);
 
-        if(oidp = hv_fetch(cache, arg, strlen(arg), 0)) {
+        if((oidp = hv_fetch(cache, arg, strlen(arg), 0))) {
             oid = *oidp;
         }
         else {
@@ -535,6 +537,7 @@ _mib_lookup(const char *arg)
             break;
         }
         /* the remaining custom formats are for opaque mibs */
+#if __FreeBSD_version < 1000000
         case FMT_MBSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct mbstat *inf = (struct mbstat *)buf;
@@ -565,6 +568,7 @@ _mib_lookup(const char *arg)
 #endif
             break;
         }
+#endif
         case FMT_NTPTIMEVAL: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct ntptimeval *inf = (struct ntptimeval *)buf;
@@ -888,7 +892,7 @@ _mib_set(const char *arg, const char *value)
         /* see if the mib exists */
         cache = get_hv("BSD::Sysctl::MIB_CACHE", 0);
 
-        if(oidp = hv_fetch(cache, arg, strlen(arg), 0)) {
+        if((oidp = hv_fetch(cache, arg, strlen(arg), 0))) {
             oid = *oidp;
         }
         else {

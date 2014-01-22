@@ -77,6 +77,7 @@ WriteMakefile(
     clean => {
         FILES => 'bsd-sysctl.h bsd-sysctl.pl',
     },
+    MIN_PERL_VERSION => '5.8.0',
 );
 
 __DATA__
