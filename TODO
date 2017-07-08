@@ -24,5 +24,3 @@ to be diagnosed.
 
 11. Remember to tweak the kern.ipc.maxsockbuf test when
 support for other platforms is added.
-
-12. Cannot set quad values.
