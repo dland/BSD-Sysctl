@@ -571,25 +571,79 @@ _mib_lookup(const char *arg)
         }
         case FMT_DEVSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
-            struct devstat *inf = (struct devstat *)buf;
+            struct devstat *inf = (struct devstat *)(buf + sizeof(buf));
             RETVAL = newRV((SV *)c);
-            hv_store(c, "devno",           5, newSViv(inf->device_number), 0);
-            hv_store(c, "unitno",          6, newSViv(inf->unit_number), 0);
+            char *p = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            do {
+                char name[BUFSIZ];
+                strcpy(name, "#.devno"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->device_number), 0);
+                strcpy(name, "#.device_name"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn(inf->device_name, strlen(inf->device_name)), 0);
+                strcpy(name, "#.unitno"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->unit_number), 0);
 #if __FreeBSD_version < 500000
-            hv_store(c, "sequence",        8, newSVpvn("", 0), 0);
-            hv_store(c, "allocated",       9, newSVpvn("", 0), 0);
-            hv_store(c, "startcount",     10, newSVpvn("", 0), 0);
-            hv_store(c, "endcount",        8, newSVpvn("", 0), 0);
-            hv_store(c, "busyfromsec",    11, newSVpvn("", 0), 0);
-            hv_store(c, "busyfromfrac",   12, newSVpvn("", 0), 0);
+                strcpy(name, "#.sequence"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.allocated"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.startcount"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.endcount"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.busyfromsec"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.busyfromfrac"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.bytes_no_data"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.bytes_read"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.bytes_write"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.bytes_free"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.operations_no_data"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.operations_read"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.operations_write"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
+                strcpy(name, "#.operations_free"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
 #else
-            hv_store(c, "sequence",        8, newSVuv(inf->sequence0), 0);
-            hv_store(c, "allocated",       9, newSViv(inf->allocated), 0);
-            hv_store(c, "startcount",     10, newSViv(inf->start_count), 0);
-            hv_store(c, "endcount",        8, newSViv(inf->end_count), 0);
-            hv_store(c, "busyfromsec",    11, newSViv(inf->busy_from.sec), 0);
-            hv_store(c, "busyfromfrac",   12, newSVuv(inf->busy_from.frac), 0);
+                strcpy(name, "#.sequence"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->sequence0), 0);
+                strcpy(name, "#.allocated"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->allocated), 0);
+                strcpy(name, "#.startcount"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->start_count), 0);
+                strcpy(name, "#.endcount"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->end_count), 0);
+                strcpy(name, "#.busyfromsec"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->busy_from.sec), 0);
+                strcpy(name, "#.busyfromfrac"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->busy_from.frac), 0);
+                strcpy(name, "#.bytes_no_data"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_NO_DATA]), 0);
+                strcpy(name, "#.bytes_read"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_READ]), 0);
+                strcpy(name, "#.bytes_write"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_WRITE]), 0);
+                strcpy(name, "#.bytes_free"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_FREE]), 0);
+                strcpy(name, "#.operations_no_data"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_NO_DATA]), 0);
+                strcpy(name, "#.operations_read"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_READ]), 0);
+                strcpy(name, "#.operations_write"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_WRITE]), 0);
+                strcpy(name, "#.operations_free"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_FREE]), 0);
 #endif
+                ++p;
+                ++inf;
+            } while (inf < (struct devstat *)(buf + buflen));
             break;
         }
 #if __FreeBSD_version >= 500000
