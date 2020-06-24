@@ -120,3 +120,5 @@ S,xvfsconf	24	auto
 T,struct_cdev	25	auto
 Q	26	FMT_64
 QU	27	FMT_U64
+C	28	FMT_INT8
+CU	29	FMT_UINT8

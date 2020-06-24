@@ -42,6 +42,8 @@ use constant FMT_XVFSCONF    => 24;
 use constant FMT_STRUCT_CDEV => 25;
 use constant FMT_64          => 26;
 use constant FMT_U64         => 27;
+use constant FMT_UINT8       => 28;
+use constant FMT_INT8        => 29;
 
 push @EXPORT_OK, 'sysctl';
 sub sysctl {
@@ -105,7 +107,9 @@ sub value {
 
 sub reset {
     my $self = shift;
-    delete $self->{_ctx};
+    delete $self->{_next};
+    delete $self->{_name};
+    delete $self->{_len0};
     return $self;
 }
 

@@ -52,102 +52,102 @@
 void
 _iterator_first(HV *self)
 {
-	SV **headp;
-	int name[CTL_MAXNAME];
-	size_t len;
+        SV **headp;
+        int name[CTL_MAXNAME];
+        size_t len;
 
-	headp = hv_fetch(self, "head", 4, 0);
-	if (headp == NULL || *headp == NULL)
-		croak( "failed to fetch head in _iterator_first()\n" );
+        headp = hv_fetch(self, "head", 4, 0);
+        if (headp == NULL || *headp == NULL)
+                croak( "failed to fetch head in _iterator_first()\n" );
 
-	if (SvPOK(*headp)) {
-		/* we were given starting node */
-		len = sizeof(name);
-		if (sysctlnametomib(SvPV_nolen(*headp), name, &len) == -1)
-			croak("sysctlnametomib(head) failed in _iterator_first\n");
-	} else {
-		/* start at the top like sysctl -a */
-		name[0] = 1;
-		len = 1;
-	}
+        if (SvPOK(*headp)) {
+                /* we were given starting node */
+                len = sizeof(name);
+                if (sysctlnametomib(SvPV_nolen(*headp), name, &len) == -1)
+                        croak("sysctlnametomib(head) failed in _iterator_first\n");
+        } else {
+                /* start at the top like sysctl -a */
+                name[0] = 1;
+                len = 1;
+        }
 
-	hv_store(self, "_next", 5, newSVpvn((char const *) name, len * sizeof(int)), 0);
-	hv_store(self, "_len0", 5, newSViv(len), 0);
-	hv_store(self, "_name", 5, newSVpvn("", 0), 0);
+        hv_store(self, "_next", 5, newSVpvn((char const *) name, len * sizeof(int)), 0);
+        hv_store(self, "_len0", 5, newSViv(len), 0);
+        hv_store(self, "_name", 5, newSVpvn("", 0), 0);
 }
 
 int
 _iterator_next(HV *self)
 {
-	SV *nextp, **len0p, *namep;
-	int *next, name1[CTL_MAXNAME + 2], name2[CTL_MAXNAME + 2];
-	size_t len0, next_len, len1, len2;
+        SV *nextp, **len0p, *namep;
+        int *next, name1[CTL_MAXNAME + 2], name2[CTL_MAXNAME + 2];
+        size_t len0, next_len, len1, len2;
 
-	if (! hv_exists(self, "_len0", 5))
-		_iterator_first(self);
+        if (! hv_exists(self, "_len0", 5))
+                _iterator_first(self);
 
-	len0p = hv_fetch(self, "_len0", 5, 0);
-	if (len0p == NULL || *len0p == NULL)
-		croak("hv_fetch(_len0) failed in _iterator_next\n");
-	len0 = SvIV(*len0p);
-	
-	nextp = hv_delete(self, "_next", 5, 0);
-	if (nextp == NULL)
-		return 0;
-	next = (int *) SvPV(nextp, next_len);
-	next_len /= sizeof(int);
+        len0p = hv_fetch(self, "_len0", 5, 0);
+        if (len0p == NULL || *len0p == NULL)
+                croak("hv_fetch(_len0) failed in _iterator_next\n");
+        len0 = SvIV(*len0p);
+        
+        nextp = hv_delete(self, "_next", 5, 0);
+        if (nextp == NULL)
+                return 0;
+        next = (int *) SvPV(nextp, next_len);
+        next_len /= sizeof(int);
 
-	namep = hv_delete(self, "_name", 5, 0);
-	if (namep == NULL)
-		return 0;
+        namep = hv_delete(self, "_name", 5, 0);
+        if (namep == NULL)
+                return 0;
 
-	/*
-	 * Get next (after _next): name1 = [ 0, 2, next ]
-	 */
+        /*
+         * Get next (after _next): name1 = [ 0, 2, next ]
+         */
 
-	name1[0] = 0;
-	name1[1] = 2; /* get next */
-	memcpy((name1 + 2), next, next_len * sizeof(int));
-	len1 = next_len + 2;
+        name1[0] = 0;
+        name1[1] = 2; /* get next */
+        memcpy((name1 + 2), next, next_len * sizeof(int));
+        len1 = next_len + 2;
 
-	len2 = sizeof(name2);
-	if (sysctl(name1, len1, name2, &len2, 0, 0) < 0) {
-		if (errno == ENOENT)
-			return (0);
+        len2 = sizeof(name2);
+        if (sysctl(name1, len1, name2, &len2, 0, 0) < 0) {
+                if (errno == ENOENT)
+                        return (0);
 
-		croak("sysctl(next) failed in _iterator_next()\n");
-	}
-	len2 /= sizeof(int);
+                croak("sysctl(next) failed in _iterator_next()\n");
+        }
+        len2 /= sizeof(int);
 
-	if (len2 < len0)
-		return 0; /* shorter than first */
-	if (memcmp(name2, next, len0 * sizeof(int)) != 0)
-		return 0; /* does not match anymore */
+        if (len2 < len0)
+                return 0; /* shorter than first */
+        if (memcmp(name2, next, len0 * sizeof(int)) != 0)
+                return 0; /* does not match anymore */
 
-	/* at this point, name2/len2 has next iterator, update _next here */
-	hv_store(self, "_next", 5, newSVpvn((char const *) name2, len2 * sizeof(int)), 0);
+        /* at this point, name2/len2 has next iterator, update _next here */
+        hv_store(self, "_next", 5, newSVpvn((char const *) name2, len2 * sizeof(int)), 0);
 
-	/* 
-	 * Get name (from name2): name1 = [ 0, 1, name2 ]
-	 */
+        /* 
+         * Get name (from name2): name1 = [ 0, 1, name2 ]
+         */
 
-	name1[0] = 0;
-	name1[1] = 1; /* get name */
-	memcpy((name1 + 2), name2, len2 * sizeof(int));
-	len1 = len2 + 2;
+        name1[0] = 0;
+        name1[1] = 1; /* get name */
+        memcpy((name1 + 2), name2, len2 * sizeof(int));
+        len1 = len2 + 2;
 
-	len2 = sizeof(name2);
-	if (sysctl(name1, len1, name2, &len2, 0, 0) < 0) {
-		if (errno == ENOENT)
-			return (0);
+        len2 = sizeof(name2);
+        if (sysctl(name1, len1, name2, &len2, 0, 0) < 0) {
+                if (errno == ENOENT)
+                        return (0);
 
-		croak("sysctl(name) failed in _iterator_next()\n");
-	}
+                croak("sysctl(name) failed in _iterator_next()\n");
+        }
 
-	/* at this point, name2/len2 has name, update _name here */
-	hv_store(self, "_name", 5, newSVpvn((char const *) name2, len2 - 1), 0);
+        /* at this point, name2/len2 has name, update _name here */
+        hv_store(self, "_name", 5, newSVpvn((char const *) name2, len2 - 1), 0);
 
-	return 1;
+        return 1;
 }
 
 /*
@@ -170,12 +170,12 @@ next (SV *refself)
     CODE:
         self = (HV *)SvRV(refself);
 
-	if (_iterator_next(self) == 0)
-		XSRETURN_UNDEF;
-	
-	namep = hv_fetch(self, "_name", 5, 0);
-	SvREFCNT_inc(*namep);
-	RETVAL = *namep;
+        if (_iterator_next(self) == 0)
+                XSRETURN_UNDEF;
+        
+        namep = hv_fetch(self, "_name", 5, 0);
+        SvREFCNT_inc(*namep);
+        RETVAL = *namep;
     OUTPUT:
         RETVAL
 
@@ -222,6 +222,10 @@ _mib_info(const char *arg)
         switch (*f) {
         case 'A':
             fmt_type = FMT_A;
+            break;
+        case 'C':
+            ++f;
+            fmt_type = *f == 'U' ? FMT_UINT8 : FMT_INT8;
             break;
         case 'I':
             ++f;
@@ -327,6 +331,21 @@ _mib_description(const char *arg)
     OUTPUT:
         RETVAL
 
+#define DECODE(T)                                                             \
+            if (buflen == sizeof(T)) {                                        \
+                RETVAL = newSViv(*(T *)buf);                                  \
+            }                                                                 \
+            else {                                                            \
+                AV *c = (AV *)sv_2mortal((SV *)newAV());                      \
+                char *bptr = buf;                                             \
+                while (buflen >= sizeof(T)) {                                 \
+                    av_push(c, newSViv(*(T *)bptr));                          \
+                    buflen -= sizeof(T);                                      \
+                    bptr   += sizeof(T);                                      \
+                }                                                             \
+                RETVAL = newRV((SV *)c);                                      \
+            }
+
 SV *
 _mib_lookup(const char *arg)
     INIT:
@@ -386,96 +405,31 @@ _mib_lookup(const char *arg)
             SvCUR_set(sv_buf, buflen);
             RETVAL = sv_buf;
             break;
+        case FMT_INT8:
+            DECODE(int8_t);
+            break;
+        case FMT_UINT8:
+            DECODE(uint8_t);
+            break;
         case FMT_INT:
-            if (buflen == sizeof(int)) {
-                RETVAL = newSViv(*(int *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(int)) {
-                    av_push(c, newSViv(*(int *)bptr));
-                    buflen -= sizeof(int);
-                    bptr   += sizeof(int);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+            DECODE(int);
             break;
         case FMT_UINT:
-            if (buflen == sizeof(unsigned int)) {
-                RETVAL = newSViv(*(unsigned int *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(unsigned int)) {
-                    av_push(c, newSViv(*(unsigned int *)bptr));
-                    buflen -= sizeof(unsigned int);
-                    bptr   += sizeof(unsigned int);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+            DECODE(unsigned int);
             break;
         case FMT_LONG:
-            if (buflen == sizeof(long)) {
-                RETVAL = newSVuv(*(long *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(long)) {
-                    av_push(c, newSVuv(*(long *)bptr));
-                    buflen -= sizeof(long);
-                    bptr   += sizeof(long);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+            DECODE(long);
             break;
         case FMT_ULONG:
-            if (buflen == sizeof(unsigned long)) {
-                RETVAL = newSVuv(*(unsigned long *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(unsigned long)) {
-                    av_push(c, newSVuv(*(unsigned long *)bptr));
-                    buflen -= sizeof(unsigned long);
-                    bptr   += sizeof(unsigned long);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+            DECODE(unsigned long);
             break;
         case FMT_64:
-            if (buflen == sizeof(int64_t)) {
-                RETVAL = newSVuv(*(int64_t *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(int64_t)) {
-                    av_push(c, newSVuv(*(int64_t *)bptr));
-                    buflen -= sizeof(int64_t);
-                    bptr   += sizeof(int64_t);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+            DECODE(int64_t);
             break;
         case FMT_U64:
-            if (buflen == sizeof(uint64_t)) {
-                RETVAL = newSVuv(*(uint64_t *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(uint64_t)) {
-                    av_push(c, newSVuv(*(uint64_t *)bptr));
-                    buflen -= sizeof(uint64_t);
-                    bptr   += sizeof(uint64_t);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+            DECODE(uint64_t);
             break;
+#undef DECODE
         case FMT_CLOCKINFO: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct clockinfo *inf = (struct clockinfo *)buf;
@@ -924,6 +878,8 @@ _mib_set(const char *arg, const char *value)
         long long llval;
         uint64_t uint64val;
         unsigned long long ullval;
+        int8_t int8val;
+        uint8_t uint8val;
         int oid_fmt;
         int oid_len;
         int intval;
@@ -982,6 +938,26 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(uintval);
             break;
 
+        case FMT_INT8:
+            int8val = (int8_t)strtol(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &int8val;
+            newsize = sizeof(int8val);
+            break;
+
+        case FMT_UINT8:
+            uint8val = (uint8_t)strtoul(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid unsigned integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &uint8val;
+            newsize = sizeof(uint8val);
+            break;
+
         case FMT_LONG:
             longval = strtol(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
@@ -1001,7 +977,6 @@ _mib_set(const char *arg, const char *value)
             newval  = &ulongval;
             newsize = sizeof(ulongval);
             break;
-
         case FMT_64:
             llval = strtoll(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0' ||
