@@ -11,9 +11,6 @@ TODO list for BSD::Sysctl
 pagefree(), representing vm.vmtotal's "number of vm pages free"
 value.
 
-7. Deal with bsd-sysctl.pl in a cleverer way (insert the
-contents into Sysctl.pm when copying to blib/lib.
-
 8. Add Makefile rules to deal with changes to mibfmt.map
 
 9. eg/mib_scan.pl reports that a number of more obscure

@@ -15,34 +15,7 @@ use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 $VERSION = '0.11';
 @ISA     = qw(Exporter);
 
-use constant FMT_A           =>  1;
-use constant FMT_INT         =>  2;
-use constant FMT_UINT        =>  3;
-use constant FMT_LONG        =>  4;
-use constant FMT_ULONG       =>  5;
-use constant FMT_N           =>  6;
-use constant FMT_BOOTINFO    =>  7;
-use constant FMT_CLOCKINFO   =>  8;
-use constant FMT_DEVSTAT     =>  9;
-use constant FMT_ICMPSTAT    => 10;
-use constant FMT_IGMPSTAT    => 11;
-use constant FMT_IPSTAT      => 12;
-use constant FMT_LOADAVG     => 13;
-use constant FMT_MBSTAT      => 14;
-use constant FMT_NFSRVSTATS  => 15;
-use constant FMT_NFSSTATS    => 16;
-use constant FMT_NTPTIMEVAL  => 17;
-use constant FMT_RIP6STAT    => 18;
-use constant FMT_TCPSTAT     => 19;
-use constant FMT_TIMEVAL     => 20;
-use constant FMT_UDPSTAT     => 21;
-use constant FMT_VMTOTAL     => 22;
-use constant FMT_XINPCB      => 23;
-use constant FMT_XVFSCONF    => 24;
-use constant FMT_64          => 26;
-use constant FMT_U64         => 27;
-use constant FMT_UINT8       => 28;
-use constant FMT_INT8        => 29;
+#include bsd-sysctl.ph
 
 push @EXPORT_OK, 'sysctl';
 sub sysctl {

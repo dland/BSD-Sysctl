@@ -15,7 +15,7 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
     ok($sysctl_info, 'mib lookup kern.ostype');
     my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
 
-    is($fmt, BSD::Sysctl::FMT_A, '... display format type A');
+    is($fmt, BSD::Sysctl::CTLTYPE_STRING, '... display format type STRING');
     is_deeply(\@oid, [1, 1], '... oid 1.1');
 }
 
@@ -24,7 +24,7 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
     ok($sysctl_info, 'mib lookup kern.ipc.maxsockbuf');
     my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
 
-    is($fmt, BSD::Sysctl::FMT_ULONG, '... display format type ULONG');
+    is($fmt, BSD::Sysctl::CTLTYPE_ULONG, '... display format type ULONG');
     is_deeply(\@oid, [1, 30, 1], '... oid 1.30.1');
 }
 
@@ -33,7 +33,7 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
     ok($sysctl_info, 'mib lookup kern.geom.confxml');
     my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
 
-    is($fmt, BSD::Sysctl::FMT_A, '... display format type A');
+    is($fmt, BSD::Sysctl::CTLTYPE_STRING, '... display format type STRING');
     my $confxml = sysctl('kern.geom.confxml');
     ok($confxml, 'value of "kern.geom.confxml" is defined');
     like($confxml, qr(^\s*<([^>]+)>.*</\1>\s*$)m, 'value of "kern.geom.confxml" is XML');

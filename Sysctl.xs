@@ -191,6 +191,7 @@ _mib_info(const char *arg)
         char fmt[BUFSIZ];
         size_t len = sizeof(fmt);
         int fmt_type;
+        u_int *kind = (u_int *)fmt;
         char *f = fmt + sizeof(int);
         char res[BUFSIZ];
         char *resp = res;
@@ -212,58 +213,33 @@ _mib_info(const char *arg)
             XSRETURN_UNDEF;
         }
 
-        switch (*f) {
-        case 'A':
-            fmt_type = FMT_A;
-            break;
-        case 'C':
-            ++f;
-            fmt_type = *f == 'U' ? FMT_UINT8 : FMT_INT8;
-            break;
-        case 'I':
-            ++f;
-            fmt_type = *f == 'U' ? FMT_UINT : FMT_INT;
-            break;
-        case 'L':
-            ++f;
-            fmt_type = *f == 'U' ? FMT_ULONG : FMT_LONG;
-            break;
-        case 'Q':
-            ++f;
-            fmt_type = *f == 'U' ? FMT_U64 : FMT_64;
-            break;
-        case 'S': {
-            if (strcmp(f,"S,clockinfo") == 0)    { fmt_type = FMT_CLOCKINFO; }
-            else if (strcmp(f,"S,loadavg") == 0) { fmt_type = FMT_LOADAVG; }
-            else if (strcmp(f,"S,timeval") == 0) { fmt_type = FMT_TIMEVAL; }
-            else if (strcmp(f,"S,vmtotal") == 0) { fmt_type = FMT_VMTOTAL; }
+        /*
+         * Trust what digital kind marker says rather than string format.
+         * Parse the format only in search for the structs that we know.
+         */
+	*kind &= CTLTYPE;
+        if (*kind == CTLTYPE_OPAQUE) {
+            if (strcmp(f,"S,clockinfo") == 0)    { fmt_type = CTLTYPE_CLOCKINFO; }
+            else if (strcmp(f,"S,loadavg") == 0) { fmt_type = CTLTYPE_LOADAVG; }
+            else if (strcmp(f,"S,timeval") == 0) { fmt_type = CTLTYPE_TIMEVAL; }
+            else if (strcmp(f,"S,vmtotal") == 0) { fmt_type = CTLTYPE_VMTOTAL; }
             /* now the opaque OIDs */
-            else if (strcmp(f,"S,bootinfo") == 0)   { fmt_type = FMT_BOOTINFO; }
-            else if (strcmp(f,"S,devstat") == 0)    { fmt_type = FMT_DEVSTAT; }
-            else if (strcmp(f,"S,icmpstat") == 0)   { fmt_type = FMT_ICMPSTAT; }
-            else if (strcmp(f,"S,igmpstat") == 0)   { fmt_type = FMT_IGMPSTAT; }
-            else if (strcmp(f,"S,ipstat") == 0)     { fmt_type = FMT_IPSTAT; }
-            else if (strcmp(f,"S,mbstat") == 0)     { fmt_type = FMT_MBSTAT; } /* removed in FreeBSD 10 */
-            else if (strcmp(f,"S,nfsrvstats") == 0) { fmt_type = FMT_NFSRVSTATS; }
-            else if (strcmp(f,"S,nfsstats") == 0)   { fmt_type = FMT_NFSSTATS; }
-            else if (strcmp(f,"S,ntptimeval") == 0) { fmt_type = FMT_NTPTIMEVAL; }
-            else if (strcmp(f,"S,rip6stat") == 0)   { fmt_type = FMT_RIP6STAT; }
-            else if (strcmp(f,"S,tcpstat") == 0)    { fmt_type = FMT_TCPSTAT; }
-            else if (strcmp(f,"S,udpstat") == 0)    { fmt_type = FMT_UDPSTAT; }
-            else if (strcmp(f,"S,xinpcb") == 0)     { fmt_type = FMT_XINPCB; }
-            else if (strcmp(f,"S,xvfsconf") == 0)   { fmt_type = FMT_XVFSCONF; }
-            else {
-                /* bleah */
-            }
-            break;
-        }
-        case 'N':
-            fmt_type = FMT_N;
-            break;
-        default:
-            fmt_type = FMT_A;
-            break;
-        }
+            else if (strcmp(f,"S,bootinfo") == 0)   { fmt_type = CTLTYPE_BOOTINFO; }
+            else if (strcmp(f,"S,devstat") == 0)    { fmt_type = CTLTYPE_DEVSTAT; }
+            else if (strcmp(f,"S,icmpstat") == 0)   { fmt_type = CTLTYPE_ICMPSTAT; }
+            else if (strcmp(f,"S,igmpstat") == 0)   { fmt_type = CTLTYPE_IGMPSTAT; }
+            else if (strcmp(f,"S,ipstat") == 0)     { fmt_type = CTLTYPE_IPSTAT; }
+            else if (strcmp(f,"S,nfsrvstats") == 0) { fmt_type = CTLTYPE_NFSRVSTATS; }
+            else if (strcmp(f,"S,nfsstats") == 0)   { fmt_type = CTLTYPE_NFSSTATS; }
+            else if (strcmp(f,"S,ntptimeval") == 0) { fmt_type = CTLTYPE_NTPTIMEVAL; }
+            else if (strcmp(f,"S,rip6stat") == 0)   { fmt_type = CTLTYPE_RIP6STAT; }
+            else if (strcmp(f,"S,tcpstat") == 0)    { fmt_type = CTLTYPE_TCPSTAT; }
+            else if (strcmp(f,"S,udpstat") == 0)    { fmt_type = CTLTYPE_UDPSTAT; }
+            else if (strcmp(f,"S,xinpcb") == 0)     { fmt_type = CTLTYPE_XINPCB; }
+            else if (strcmp(f,"S,xvfsconf") == 0)   { fmt_type = CTLTYPE_XVFSCONF; }
+            else { fmt_type = CTLTYPE_OPAQUE; }
+        } else
+            fmt_type = *kind;
 
         /* first two bytes indicate format type */
         memcpy(resp, (void *)&fmt_type, sizeof(int));
@@ -384,37 +360,43 @@ _mib_lookup(const char *arg)
         }
 
         switch(oid_fmt) {
-        case FMT_A:
+        case CTLTYPE_STRING:
             SvPOK_on(sv_buf);
             SvCUR_set(sv_buf, buflen);
             RETVAL = sv_buf;
             break;
-        case FMT_INT8:
+        case CTLTYPE_S8:
             DECODE(int8_t);
             break;
-        case FMT_UINT8:
+        case CTLTYPE_U8:
             DECODE(uint8_t);
             break;
-        case FMT_INT:
+        case CTLTYPE_INT:
             DECODE(int);
             break;
-        case FMT_UINT:
+        case CTLTYPE_UINT:
             DECODE(unsigned int);
             break;
-        case FMT_LONG:
+        case CTLTYPE_S32:
+            DECODE(int32_t);
+            break;
+        case CTLTYPE_U32:
+            DECODE(uint32_t);
+            break;
+        case CTLTYPE_LONG:
             DECODE(long);
             break;
-        case FMT_ULONG:
+        case CTLTYPE_ULONG:
             DECODE(unsigned long);
             break;
-        case FMT_64:
+        case CTLTYPE_S64:
             DECODE(int64_t);
             break;
-        case FMT_U64:
+        case CTLTYPE_U64:
             DECODE(uint64_t);
             break;
 #undef DECODE
-        case FMT_CLOCKINFO: {
+        case CTLTYPE_CLOCKINFO: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct clockinfo *inf = (struct clockinfo *)buf;
             RETVAL = newRV((SV *)c);
@@ -424,7 +406,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "stathz", 6, newSViv(inf->stathz), 0);
             break;
         }
-        case FMT_VMTOTAL: {
+        case CTLTYPE_VMTOTAL: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct vmtotal *inf = (struct vmtotal *)buf;
             RETVAL = newRV((SV *)c);
@@ -444,7 +426,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "pagefree",          8, newSViv(inf->t_free), 0);
             break;
         }
-        case FMT_LOADAVG: {
+        case CTLTYPE_LOADAVG: {
             AV *c = (AV *)sv_2mortal((SV *)newAV());
             struct loadavg *inf = (struct loadavg *)buf;
             double scale = inf->fscale;
@@ -455,7 +437,7 @@ _mib_lookup(const char *arg)
             av_store(c, 2, newSVnv((double)inf->ldavg[2]/scale));
             break;
         }
-        case FMT_TIMEVAL: {
+        case CTLTYPE_TIMEVAL: {
             struct timeval *inf = (struct timeval *)buf;
             RETVAL = newSVnv(
                 (double)inf->tv_sec + ((double)inf->tv_usec/1000000)
@@ -463,7 +445,7 @@ _mib_lookup(const char *arg)
             break;
         }
         /* the remaining custom formats are for opaque mibs */
-        case FMT_NTPTIMEVAL: {
+        case CTLTYPE_NTPTIMEVAL: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct ntptimeval *inf = (struct ntptimeval *)buf;
             RETVAL = newRV((SV *)c);
@@ -475,7 +457,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "timestate",  9, newSViv(inf->time_state), 0);
             break;
         }
-        case FMT_DEVSTAT: {
+        case CTLTYPE_DEVSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct devstat *inf = (struct devstat *)(buf + sizeof(buf));
             RETVAL = newRV((SV *)c);
@@ -521,7 +503,7 @@ _mib_lookup(const char *arg)
             } while (inf < (struct devstat *)(buf + buflen));
             break;
         }
-        case FMT_XVFSCONF: {
+        case CTLTYPE_XVFSCONF: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct xvfsconf *inf = (struct xvfsconf *)buf;
             RETVAL = newRV((SV *)c);
@@ -531,7 +513,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "flags",        5, newSViv(inf->vfc_flags), 0);
             break;
         }
-        case FMT_ICMPSTAT: {
+        case CTLTYPE_ICMPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct icmpstat *inf = (struct icmpstat *)buf;
             RETVAL = newRV((SV *)c);
@@ -547,7 +529,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "noroute",       7, newSViv(inf->icps_noroute), 0);
             break;
         }
-        case FMT_IGMPSTAT: {
+        case CTLTYPE_IGMPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct igmpstat *inf = (struct igmpstat *)buf;
             RETVAL = newRV((SV *)c);
@@ -573,7 +555,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "sent",              4, newSVuv(inf->igps_snd_reports), 0);
             break;
         }
-        case FMT_TCPSTAT: {
+        case CTLTYPE_TCPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct tcpstat *inf = (struct tcpstat *)buf;
             RETVAL = newRV((SV *)c);
@@ -667,7 +649,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "sackscorebover",   14, newSVuv(inf->tcps_sack_sboverflow), 0);
             break;
         }
-        case FMT_UDPSTAT: {
+        case CTLTYPE_UDPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct udpstat *inf = (struct udpstat *)buf;
             RETVAL = newRV((SV *)c);
@@ -685,7 +667,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "noportmcast",    11, newSVuv(inf->udps_noportmcast), 0);
             break;
         }
-        case FMT_RIP6STAT: {
+        case CTLTYPE_RIP6STAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct rip6stat *inf = (struct rip6stat *)buf;
             RETVAL = newRV((SV *)c);
@@ -700,7 +682,7 @@ _mib_lookup(const char *arg)
             break;
         }
 #ifdef BOOTINFO_VERSION
-        case FMT_BOOTINFO: {
+        case CTLTYPE_BOOTINFO: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct bootinfo *inf = (struct bootinfo *)buf;
             RETVAL = newRV((SV *)c);
@@ -724,11 +706,12 @@ _mib_lookup(const char *arg)
             break;
         }
 #endif
-        case FMT_N:
-        case FMT_IPSTAT:
-        case FMT_NFSRVSTATS:
-        case FMT_NFSSTATS:
-        case FMT_XINPCB:
+        case CTLTYPE_NODE:
+        case CTLTYPE_IPSTAT:
+        case CTLTYPE_NFSRVSTATS:
+        case CTLTYPE_NFSSTATS:
+        case CTLTYPE_XINPCB:
+        case CTLTYPE_OPAQUE:
             /* don't know how to interpret the results */
             SvREFCNT_dec(sv_buf);
             XSRETURN_IV(0);
@@ -740,7 +723,7 @@ _mib_lookup(const char *arg)
             break;
         }
 
-        if (oid_fmt != FMT_A) {
+        if (oid_fmt != CTLTYPE_STRING) {
             SvREFCNT_dec(sv_buf);
         }
 
@@ -793,12 +776,12 @@ _mib_set(const char *arg, const char *value)
         oid_data += sizeof(int);
         
         switch(oid_fmt) {
-        case FMT_A:
+        case CTLTYPE_STRING:
             newval  = (void *)value;
             newsize = strlen(value);
             break;
 
-        case FMT_INT:
+        case CTLTYPE_INT:
             intval = (int)strtol(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid integer: '%s'", value);
@@ -808,7 +791,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(intval);
             break;
 
-        case FMT_UINT:
+        case CTLTYPE_UINT:
             uintval = (unsigned int)strtoul(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid unsigned integer: '%s'", value);
@@ -818,7 +801,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(uintval);
             break;
 
-        case FMT_INT8:
+        case CTLTYPE_S8:
             int8val = (int8_t)strtol(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid integer: '%s'", value);
@@ -828,7 +811,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(int8val);
             break;
 
-        case FMT_UINT8:
+        case CTLTYPE_U8:
             uint8val = (uint8_t)strtoul(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid unsigned integer: '%s'", value);
@@ -838,7 +821,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(uint8val);
             break;
 
-        case FMT_LONG:
+        case CTLTYPE_LONG:
             longval = strtol(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid long integer: '%s'", value);
@@ -848,7 +831,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(longval);
             break;
 
-        case FMT_ULONG:
+        case CTLTYPE_ULONG:
             ulongval = strtoul(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid unsigned long integer: '%s'", value);
@@ -857,7 +840,7 @@ _mib_set(const char *arg, const char *value)
             newval  = &ulongval;
             newsize = sizeof(ulongval);
             break;
-        case FMT_64:
+        case CTLTYPE_S64:
             llval = strtoll(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0' ||
                 (llval == 0 && errno == EINVAL)) {
@@ -876,7 +859,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(int64val);
             break;
 
-        case FMT_U64:
+        case CTLTYPE_U64:
             ullval = strtoull(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0' ||
                 (ullval == 0 && errno == EINVAL)) {

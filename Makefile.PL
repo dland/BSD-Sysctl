@@ -12,55 +12,37 @@ if ($Config{osname} ne 'freebsd') {
 
 my %define;
 my $maxlen = 0;
+my $num = 16;	# numbers below 16 are reserved for <sys/sysctl.h> CTLTYPE_*
 while (<DATA>) {
     chomp;
-    next unless my ($key, $num, $str) = ($_ =~ /^(\S+)\t(\S+)\t(\S+)/);
-    if ($str eq 'auto') {
-        if ($key =~ /^[ST],(.*)/) {
-            $str = 'FMT_' . uc($1);
-        }
-        else {
-            die "$0: cannot resolve auto name from $key\n";
-        }
-    }
+    next if /^#/ || /^\s*$/;
+    my $key = 'S,' . $_;
+    my $str = 'CTLTYPE_' . uc($_);
     $maxlen = length($str) if $maxlen < length($str);
-    $define{$key} = [$str, $num];
+    $define{$key} = [$str, $num++];
 }
 
 open my $out_h,  '>', 'bsd-sysctl.h'  or die "Cannot open C header for output: $!\n";
-open my $out_pl, '>', 'bsd-sysctl.pl' or die "Cannot open Perl header for output: $!\n";
-
-my $years = (gmtime)[5]+1900;
-$years = ($years == 2006) ? $years : "2006-$years";
-
-print $out_h <<EOH;
-/* bsd-sysctl.h -- defines for $module_name
- *
- * Copyright (C) $years, David Landgren, all rights reserved.
- * This file genned by $0 at @{[scalar gmtime]}
- */
-
-EOH
+open my $out_pl, '>', 'bsd-sysctl.ph' or die "Cannot open Perl header for output: $!\n";
 
 # bootinfo.h header file not available on the AMD64 platform
 if (-r '/usr/include/machine/bootinfo.h') {
     print $out_h "#include <machine/bootinfo.h>\n";
 }
 
-print $out_pl <<EOH;
-# bsd-sysctl.pl -- constants for $module_name
-#
-# Copyright (C) $years, David Landgren, all rights reserved.
-# This file genned by $0 at @{[scalar gmtime]}
+open my $in_sys, '<', '/usr/include/sys/sysctl.h' or die "Cannot open sys/sysctl.h: $!\n";
 
-EOH
+while (<$in_sys>) {
+    next unless (/^#define	(CTLTYPE_[A-Z0-9]+)\s+(0x[0-9a-f]+|[0-9]+)/);
+    printf $out_pl "use constant %-${maxlen}s => %s;\n", $1, $2;
+}
+
+close $in_sys;
 
 for my $key (sort keys %define) {
     printf $out_h "#define %-${maxlen}s %2d\n", @{$define{$key}};
     printf $out_pl "use constant %-${maxlen}s => %2d;\n", @{$define{$key}};
 }
-
-print $out_pl "\n1;\n";
 
 close $out_h;
 close $out_pl;
@@ -74,50 +56,41 @@ WriteMakefile(
     PREREQ_PM     => {
         'XSLoader' => 0
     },
+    PM_FILTER     => 'perl -pe "if (/^\#include (.+)$$/) {		\
+					open FILE, \\$$1 or		\
+					    die \"open \\$$1\";		\
+					while (<FILE>) { print; };	\
+					close FILE;			\
+					next;				\
+				};"',
     clean => {
-        FILES => 'bsd-sysctl.h bsd-sysctl.pl',
+        FILES => 'bsd-sysctl.h bsd-sysctl.ph',
     },
     MIN_PERL_VERSION => '5.8.0',
 );
 
 __DATA__
 #
-# List of constant definitions.
+# List of structures we are able to parse.
 #
 # This produces
 #  -- bsd-sysctl.h (#defines for Sysctl.xs)
-#  -- bsd-sysctl.pl (use constants for Sysctl.pm)
-#
-# auto string definitions are derived from the first
-# field, for instance, S,bootinfo => FMT_BOOTINFO
-# (This eliminates a chance to introduce typos).
-# _key	numeric	string
+#  -- bsd-sysctl.ph (use constants for Sysctl.pm)
 
-A	1	FMT_A
-I	2	FMT_INT
-IU	3	FMT_UINT
-L	4	FMT_LONG
-LU	5	FMT_ULONG
-N	6	FMT_N
-S,bootinfo	7	auto
-S,clockinfo	8	auto
-S,devstat	9	auto
-S,icmpstat	10	auto
-S,igmpstat	11	auto
-S,ipstat	12	auto
-S,loadavg	13	auto
-S,mbstat	14	auto
-S,nfsrvstats	15	auto
-S,nfsstats	16	auto
-S,ntptimeval	17	auto
-S,rip6stat	18	auto
-S,tcpstat	19	auto
-S,timeval	20	auto
-S,udpstat	21	auto
-S,vmtotal	22	auto
-S,xinpcb	23	auto
-S,xvfsconf	24	auto
-Q	26	FMT_64
-QU	27	FMT_U64
-C	28	FMT_INT8
-CU	29	FMT_UINT8
+bootinfo
+clockinfo
+devstat
+icmpstat
+igmpstat
+ipstat
+loadavg
+nfsrvstats
+nfsstats
+ntptimeval
+rip6stat
+tcpstat
+timeval
+udpstat
+vmtotal
+xinpcb
+xvfsconf
