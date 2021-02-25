@@ -361,6 +361,8 @@ _mib_lookup(const char *arg)
 
         switch(oid_fmt) {
         case CTLTYPE_STRING:
+            if (buf[buflen - 1] == '\0')  /* Shall always be true. */
+                buflen--;
             SvPOK_on(sv_buf);
             SvCUR_set(sv_buf, buflen);
             RETVAL = sv_buf;

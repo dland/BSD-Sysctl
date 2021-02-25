@@ -4,7 +4,7 @@
 # Copyright (C) 2006, 2009 David Landgren
 
 use strict;
-use Test::More tests => 20;
+use Test::More tests => 21;
 
 use BSD::Sysctl qw(sysctl sysctl_exists);
 
@@ -17,6 +17,11 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
 
     is($fmt, BSD::Sysctl::CTLTYPE_STRING, '... display format type STRING');
     is_deeply(\@oid, [1, 1], '... oid 1.1');
+}
+
+{
+    my $ostype = sysctl('kern.ostype');
+    is($ostype, "FreeBSD");
 }
 
 {
