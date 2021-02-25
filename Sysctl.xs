@@ -363,6 +363,7 @@ _mib_lookup(const char *arg)
         case CTLTYPE_STRING:
             if (buf[buflen - 1] == '\0')  /* Shall always be true. */
                 buflen--;
+        case CTLTYPE_OPAQUE:
             SvPOK_on(sv_buf);
             SvCUR_set(sv_buf, buflen);
             RETVAL = sv_buf;
@@ -713,7 +714,6 @@ _mib_lookup(const char *arg)
         case CTLTYPE_NFSRVSTATS:
         case CTLTYPE_NFSSTATS:
         case CTLTYPE_XINPCB:
-        case CTLTYPE_OPAQUE:
             /* don't know how to interpret the results */
             SvREFCNT_dec(sv_buf);
             XSRETURN_IV(0);
@@ -725,7 +725,7 @@ _mib_lookup(const char *arg)
             break;
         }
 
-        if (oid_fmt != CTLTYPE_STRING) {
+        if (oid_fmt != CTLTYPE_STRING && oid_fmt != CTLTYPE_OPAQUE) {
             SvREFCNT_dec(sv_buf);
         }
 
