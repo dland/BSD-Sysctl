@@ -353,7 +353,7 @@ at least for the time being. This is a bug that should be reported.
 
 =head1 LIMITATIONS
 
-At the current time, FreeBSD versions 4.x through 8.x are
+At the current time only officially supported FreeBSD versions are
 supported.
 
 I am looking for volunteers to help port this module to NetBSD and
@@ -362,12 +362,6 @@ If you are interested in helping, please consult the README file
 for more information.
 
 =head1 BUGS
-
-Some branches are not iterated on FreeBSD 4 (and perl 5.6.1). Most
-notably, the C<vm.stats> branch. I am not sure of the reason, but
-it's a failure in a C<sysctl> system call, so it could be related
-to that release. As FreeBSD 4.x reached the end of its supported
-life in 2007, I'm not particularly fussed.
 
 Please report all bugs at
 L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=BSD-Sysctl|rt.cpan.org>.

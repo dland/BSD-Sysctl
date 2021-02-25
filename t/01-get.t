@@ -4,7 +4,7 @@
 # Copyright (C) 2006, 2009 David Landgren
 
 use strict;
-use Test::More tests => 23;
+use Test::More tests => 20;
 
 use BSD::Sysctl qw(sysctl sysctl_exists);
 
@@ -24,26 +24,7 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
     ok($sysctl_info, 'mib lookup kern.ipc.maxsockbuf');
     my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
 
-    # This is FMT_INT for FreeBSD 4.x, deal with it
-    # is($fmt, BSD::Sysctl::FMT_ULONG, '... display format type ULONG');
-    is_deeply(\@oid, [1, 30, 1], '... oid 1.30.1');
-}
-
-{
-    my $sysctl_info = BSD::Sysctl::_mib_info('kern.ipc.maxsockbuf');
-    ok($sysctl_info, 'mib lookup kern.ipc.maxsockbuf');
-    my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
-
-    # TODO: this will require a revision when OpenBSD or NetBSD support is added
-    my $osrelease = sysctl('kern.osrelease');
-    ok($osrelease, "sysctl('kern.osrelease')");
-    if ($osrelease =~ /^4\./) {
-        # FreeBSD 4.x stores this in a smaller data type
-        is($fmt, BSD::Sysctl::FMT_INT, '... display format type INT (on 4.x)');
-    }
-    else {
-        is($fmt, BSD::Sysctl::FMT_ULONG, '... display format type ULONG');
-    }
+    is($fmt, BSD::Sysctl::FMT_ULONG, '... display format type ULONG');
     is_deeply(\@oid, [1, 30, 1], '... oid 1.30.1');
 }
 
@@ -82,5 +63,5 @@ ok(!sysctl_exists('kern.maxbananas'), 'kern.maxbananas does not exist');
     cmp_ok($nr_files, '>', 0, "got the number of open files again (now $nr_files)");
 }
 
-is(scalar(keys %BSD::Sysctl::MIB_CACHE), 7, 'cached mib count')
+is(scalar(keys %BSD::Sysctl::MIB_CACHE), 6, 'cached mib count')
     or do { diag("cached: [$_]") for sort keys %BSD::Sysctl::MIB_CACHE };

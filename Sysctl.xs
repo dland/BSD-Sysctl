@@ -7,11 +7,6 @@
 #include "perl.h"
 #include "XSUB.h"
 
-/* define _FreeBSD_version where applicable */
-#if __FreeBSD__ >= 2
-#include <osreldate.h>
-#endif
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/cdefs.h>
@@ -20,9 +15,6 @@
 #include <sys/time.h>       /* struct clockinfo */
 #include <sys/vmmeter.h>    /* struct vmtotal */
 #include <sys/resource.h>   /* struct loadavg */
-#if __FreeBSD_version < 1000000
-#include <sys/mbuf.h>       /* struct mbstat (opaque mib) */
-#endif
 #include <sys/timex.h>      /* struct ntptimeval (opaque mib) */
 #include <sys/devicestat.h> /* struct devstat (opaque mib) */
 #include <sys/mount.h>      /* struct xvfsconf (opaque mib) */
@@ -32,9 +24,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
-#if __FreeBSD_version < 500000
-#include <netinet/tcp.h>  /* struct tcpstat prerequisite */
-#endif
 
 #include <netinet/icmp_var.h> /* struct icmpstat */
 #include <netinet/igmp_var.h> /* struct igmpstat */
@@ -479,38 +468,6 @@ _mib_lookup(const char *arg)
             break;
         }
         /* the remaining custom formats are for opaque mibs */
-#if __FreeBSD_version < 1000000
-        case FMT_MBSTAT: {
-            HV *c = (HV *)sv_2mortal((SV *)newHV());
-            struct mbstat *inf = (struct mbstat *)buf;
-            RETVAL = newRV((SV *)c);
-            hv_store(c, "copymfail",      9, newSVuv(inf->m_mcfail), 0);
-            hv_store(c, "pullupfail",    10, newSVuv(inf->m_mpfail), 0);
-            hv_store(c, "mbufsize",       8, newSVuv(inf->m_msize), 0);
-            hv_store(c, "mclustsize",    10, newSVuv(inf->m_mclbytes), 0);
-            hv_store(c, "minclsize",      9, newSVuv(inf->m_minclsize), 0);
-            hv_store(c, "mbuflen",        7, newSVuv(inf->m_mlen), 0);
-            hv_store(c, "mbufhead",       8, newSVuv(inf->m_mhlen), 0);
-            hv_store(c, "drain",          5, newSVuv(inf->m_drain), 0);
-#if __FreeBSD_version < 500000
-            hv_store(c, "numtypes",       8, newSVpvn("", 0), 0);
-#else
-            hv_store(c, "numtypes",       8, newSViv(inf->m_numtypes), 0);
-#endif
-#if __FreeBSD_version < 600000
-            hv_store(c, "mbufs",          5, newSVpvn("", 0), 0);
-            hv_store(c, "mclusts",        7, newSVpvn("", 0), 0);
-            hv_store(c, "sfallocwait",   11, newSVpvn("", 0), 0);
-            hv_store(c, "sfiocnt",        7, newSVpvn("", 0), 0);
-#else
-            hv_store(c, "mbufs",          5, newSVuv(inf->m_mbufs), 0);
-            hv_store(c, "mclusts",        7, newSVuv(inf->m_mclusts), 0);
-            hv_store(c, "sfallocwait",   11, newSVuv(inf->sf_allocwait), 0);
-            hv_store(c, "sfiocnt",        7, newSVuv(inf->sf_iocnt), 0);
-#endif
-            break;
-        }
-#endif
         case FMT_NTPTIMEVAL: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct ntptimeval *inf = (struct ntptimeval *)buf;
@@ -536,36 +493,6 @@ _mib_lookup(const char *arg)
                 hv_store(c, name, strlen(name), newSVpvn(inf->device_name, strlen(inf->device_name)), 0);
                 strcpy(name, "#.unitno"); name[0] = *p;
                 hv_store(c, name, strlen(name), newSViv(inf->unit_number), 0);
-#if __FreeBSD_version < 500000
-                strcpy(name, "#.sequence"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.allocated"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.startcount"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.endcount"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.busyfromsec"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.busyfromfrac"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.bytes_no_data"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.bytes_read"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.bytes_write"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.bytes_free"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.operations_no_data"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.operations_read"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.operations_write"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-                strcpy(name, "#.operations_free"); name[0] = *p;
-                hv_store(c, name, strlen(name), newSVpvn("", 0)), 0);
-#else
                 strcpy(name, "#.sequence"); name[0] = *p;
                 hv_store(c, name, strlen(name), newSVuv(inf->sequence0), 0);
                 strcpy(name, "#.allocated"); name[0] = *p;
@@ -594,13 +521,11 @@ _mib_lookup(const char *arg)
                 hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_WRITE]), 0);
                 strcpy(name, "#.operations_free"); name[0] = *p;
                 hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_FREE]), 0);
-#endif
                 ++p;
                 ++inf;
             } while (inf < (struct devstat *)(buf + buflen));
             break;
         }
-#if __FreeBSD_version >= 500000
         case FMT_XVFSCONF: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct xvfsconf *inf = (struct xvfsconf *)buf;
@@ -611,7 +536,6 @@ _mib_lookup(const char *arg)
             hv_store(c, "flags",        5, newSViv(inf->vfc_flags), 0);
             break;
         }
-#endif
         case FMT_ICMPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct icmpstat *inf = (struct icmpstat *)buf;
@@ -632,17 +556,6 @@ _mib_lookup(const char *arg)
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct igmpstat *inf = (struct igmpstat *)buf;
             RETVAL = newRV((SV *)c);
-#if __FreeBSD_version < 800070
-            hv_store(c, "total",       5, newSVuv(inf->igps_rcv_total), 0);
-            hv_store(c, "tooshort",    8, newSVuv(inf->igps_rcv_tooshort), 0);
-            hv_store(c, "badsum",      6, newSVuv(inf->igps_rcv_badsum), 0);
-            hv_store(c, "queries",     7, newSVuv(inf->igps_rcv_queries), 0);
-            hv_store(c, "badqueries", 10, newSVuv(inf->igps_rcv_badqueries), 0);
-            hv_store(c, "reports",     7, newSVuv(inf->igps_rcv_reports), 0);
-            hv_store(c, "badreports", 10, newSVuv(inf->igps_rcv_badreports), 0);
-            hv_store(c, "ourreports", 10, newSVuv(inf->igps_rcv_ourreports), 0);
-            hv_store(c, "sent",        4, newSVuv(inf->igps_snd_reports), 0);
-#else
             /* Message statistics */
             hv_store(c, "total",             5, newSVuv(inf->igps_rcv_total), 0);
             hv_store(c, "tooshort",          8, newSVuv(inf->igps_rcv_tooshort), 0);
@@ -663,7 +576,6 @@ _mib_lookup(const char *arg)
             hv_store(c, "ourreports",       10, newSVuv(inf->igps_rcv_ourreports), 0);
             hv_store(c, "nore",              4, newSVuv(inf->igps_rcv_nora), 0);
             hv_store(c, "sent",              4, newSVuv(inf->igps_snd_reports), 0);
-#endif
             break;
         }
         case FMT_TCPSTAT: {
@@ -747,26 +659,10 @@ _mib_lookup(const char *arg)
             hv_store(c, "zonefail",          8, newSVuv(inf->tcps_sc_zonefail), 0);
             hv_store(c, "sendcookie",       10, newSVuv(inf->tcps_sc_sendcookie), 0);
             hv_store(c, "recvcookie",       10, newSVuv(inf->tcps_sc_recvcookie), 0);
-#if __FreeBSD_version < 500000
-            hv_store(c, "minmssdrops",      11, newSVpvn("", 0), 0);
-            hv_store(c, "sendrexmitbad",    13, newSVpvn("", 0), 0);
-            hv_store(c, "hostcacheadd",     12, newSVpvn("", 0), 0);
-            hv_store(c, "hostcacheover",    13, newSVpvn("", 0), 0);
-#else
             hv_store(c, "minmssdrops",      11, newSVuv(inf->tcps_minmssdrops), 0);
             hv_store(c, "sendrexmitbad",    13, newSVuv(inf->tcps_sndrexmitbad), 0);
             hv_store(c, "hostcacheadd",     12, newSVuv(inf->tcps_hc_added), 0);
             hv_store(c, "hostcacheover",    13, newSVuv(inf->tcps_hc_bucketoverflow), 0);
-#endif
-#if __FreeBSD_version < 600000
-            hv_store(c, "badrst",            6, newSVpvn("", 0), 0);
-            hv_store(c, "sackrecover",      11, newSVpvn("", 0), 0);
-            hv_store(c, "sackrexmitsegs",   14, newSVpvn("", 0), 0);
-            hv_store(c, "sackrexmitbytes",  15, newSVpvn("", 0), 0);
-            hv_store(c, "sackrecv",          8, newSVpvn("", 0), 0);
-            hv_store(c, "sacksend",          8, newSVpvn("", 0), 0);
-            hv_store(c, "sackscorebover",   14, newSVpvn("", 0), 0);
-#else
             hv_store(c, "badrst",            6, newSVuv(inf->tcps_badrst), 0);
             hv_store(c, "sackrecover",      11, newSVuv(inf->tcps_sack_recovery_episode), 0);
             hv_store(c, "sackrexmitsegs",   14, newSVuv(inf->tcps_sack_rexmits), 0);
@@ -774,7 +670,6 @@ _mib_lookup(const char *arg)
             hv_store(c, "sackrecv",          8, newSVuv(inf->tcps_sack_rcv_blocks), 0);
             hv_store(c, "sacksend",          8, newSVuv(inf->tcps_sack_send_blocks), 0);
             hv_store(c, "sackscorebover",   14, newSVuv(inf->tcps_sack_sboverflow), 0);
-#endif
             break;
         }
         case FMT_UDPSTAT: {
@@ -825,21 +720,12 @@ _mib_lookup(const char *arg)
             /* don't know if any IA64 fields are useful,
              * (as per /usr/src/sys/ia64/include/bootinfo.h)
              */
-#ifdef __ia64
-            hv_store(c, "biosused",       8, newSVpvn("", 0), 0);
-            hv_store(c, "size",           4, newSVpvn("", 0), 0);
-            hv_store(c, "msizevalid",    10, newSVpvn("", 0), 0);
-            hv_store(c, "biosdev",        7, newSVpvn("", 0), 0);
-            hv_store(c, "basemem",        7, newSVpvn("", 0), 0);
-            hv_store(c, "extmem",         6, newSVpvn("", 0), 0);
-#else
             hv_store(c, "biosused",       8, newSVuv(inf->bi_n_bios_used), 0);
             hv_store(c, "size",           4, newSVuv(inf->bi_size), 0);
             hv_store(c, "msizevalid",    10, newSVuv(inf->bi_memsizes_valid), 0);
             hv_store(c, "biosdev",        7, newSVuv(inf->bi_bios_dev), 0);
             hv_store(c, "basemem",        7, newSVuv(inf->bi_basemem), 0);
             hv_store(c, "extmem",         6, newSVuv(inf->bi_extmem), 0);
-#endif
             break;
         }
 #endif
