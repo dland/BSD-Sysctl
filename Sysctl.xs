@@ -8,8 +8,7 @@
 #include "XSUB.h"
 
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/cdefs.h>
+#include <sys/param.h>
 #include <sys/sysctl.h>
 
 #if __FreeBSD_version <= 1201500
@@ -98,7 +97,13 @@ _iterator_next(HV *self)
                 return 0;
 
         name1[0] = CTL_SYSCTL;
-        name1[1] = CTL_SYSCTL_NEXT;
+        name1[1] = hv_exists(self, "noskip", 6) ?
+#if __FreeBSD_version >= 1300120
+            CTL_SYSCTL_NEXTNOSKIP
+#else
+            CTL_SYSCTL_NEXT
+#endif
+            : CTL_SYSCTL_NEXT;
         memcpy((name1 + 2), next, next_len * sizeof(int));
         len1 = next_len + 2;
 

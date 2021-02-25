@@ -87,10 +87,11 @@ sub set {
 }
 
 sub iterator {
-    my $class = shift;
-    my $name  = shift;
+    my ($class, $name, %args) = @_;
     my $self;
+
     $self->{head} = $name || undef;
+    $self->{noskip} = 1 if (defined($args{noskip}));
     return bless $self, $class;
 }
 
@@ -263,6 +264,11 @@ fails, undef is returned.
   while ($k->next) {
     print $k->name, '=', $k->value, "\n";
   }
+
+To force iteration through variables that are marked with CTLFLAG_SKIP
+use 'noskip' argument:
+
+  my $k = BSD::Sysctl->iterator( 'kern', ( noskip => 1 ));
 
 =item next
 
