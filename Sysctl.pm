@@ -39,7 +39,6 @@ use constant FMT_UDPSTAT     => 21;
 use constant FMT_VMTOTAL     => 22;
 use constant FMT_XINPCB      => 23;
 use constant FMT_XVFSCONF    => 24;
-use constant FMT_STRUCT_CDEV => 25;
 use constant FMT_64          => 26;
 use constant FMT_U64         => 27;
 use constant FMT_UINT8       => 28;

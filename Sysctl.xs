@@ -257,15 +257,6 @@ _mib_info(const char *arg)
             }
             break;
         }
-        case 'T': {
-            if (strcmp(f,"T,struct cdev *") == 0) {
-                fmt_type = FMT_STRUCT_CDEV;
-            }
-            else {
-                /* bleah */
-            }
-            break;
-        }
         case 'N':
             fmt_type = FMT_N;
             break;
@@ -738,7 +729,6 @@ _mib_lookup(const char *arg)
         case FMT_NFSRVSTATS:
         case FMT_NFSSTATS:
         case FMT_XINPCB:
-        case FMT_STRUCT_CDEV:
             /* don't know how to interpret the results */
             SvREFCNT_dec(sv_buf);
             XSRETURN_IV(0);
