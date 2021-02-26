@@ -1,5 +1,6 @@
 /* Sysctl.xs -- XS component of BSD-Sysctl
  *
+ * Copyright (C) 2021 Gleb Smirnoff
  * Copyright (C) 2006-2014 David Landgren
  */
 

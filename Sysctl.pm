@@ -1,5 +1,6 @@
 # BSD::Sysctl.pm - Access BSD sysctl(8) information directly
 #
+# Copyright (C) 2021 Gleb Smirnoff, all rights reserved.
 # Copyright (C) 2006-2014 David Landgren, all rights reserved.
 
 package BSD::Sysctl;
@@ -12,7 +13,7 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.11';
+$VERSION = '0.12';
 @ISA     = qw(Exporter);
 
 #include bsd-sysctl.ph
@@ -94,8 +95,7 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.11 of BSD::Sysctl, released
-2014-01-22.
+This document describes version 0.12 of BSD::Sysctl
 
 =head1 SYNOPSIS
 
