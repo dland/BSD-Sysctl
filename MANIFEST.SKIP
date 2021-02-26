@@ -1,4 +1,0 @@
-\B\.svn\b
-\B\.git\b
-bsd-sysctl.h
-bsd-sysctl.pl
