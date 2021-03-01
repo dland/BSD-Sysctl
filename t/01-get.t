@@ -4,7 +4,7 @@
 # Copyright (C) 2006, 2009 David Landgren
 
 use strict;
-use Test::More tests => 23;
+use Test::More tests => 29;
 
 use BSD::Sysctl qw(sysctl sysctl_exists);
 
@@ -15,18 +15,13 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
     ok($sysctl_info, 'mib lookup kern.ostype');
     my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
 
-    is($fmt, BSD::Sysctl::FMT_A, '... display format type A');
+    is($fmt, BSD::Sysctl::CTLTYPE_STRING, '... display format type STRING');
     is_deeply(\@oid, [1, 1], '... oid 1.1');
 }
 
 {
-    my $sysctl_info = BSD::Sysctl::_mib_info('kern.ipc.maxsockbuf');
-    ok($sysctl_info, 'mib lookup kern.ipc.maxsockbuf');
-    my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
-
-    # This is FMT_INT for FreeBSD 4.x, deal with it
-    # is($fmt, BSD::Sysctl::FMT_ULONG, '... display format type ULONG');
-    is_deeply(\@oid, [1, 30, 1], '... oid 1.30.1');
+    my $ostype = sysctl('kern.ostype');
+    is($ostype, "FreeBSD");
 }
 
 {
@@ -34,16 +29,7 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
     ok($sysctl_info, 'mib lookup kern.ipc.maxsockbuf');
     my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
 
-    # TODO: this will require a revision when OpenBSD or NetBSD support is added
-    my $osrelease = sysctl('kern.osrelease');
-    ok($osrelease, "sysctl('kern.osrelease')");
-    if ($osrelease =~ /^4\./) {
-        # FreeBSD 4.x stores this in a smaller data type
-        is($fmt, BSD::Sysctl::FMT_INT, '... display format type INT (on 4.x)');
-    }
-    else {
-        is($fmt, BSD::Sysctl::FMT_ULONG, '... display format type ULONG');
-    }
+    is($fmt, BSD::Sysctl::CTLTYPE_ULONG, '... display format type ULONG');
     is_deeply(\@oid, [1, 30, 1], '... oid 1.30.1');
 }
 
@@ -52,10 +38,29 @@ ok(BSD::Sysctl::_mib_exists('kern.maxproc'), 'mib exists');
     ok($sysctl_info, 'mib lookup kern.geom.confxml');
     my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
 
-    is($fmt, BSD::Sysctl::FMT_A, '... display format type A');
+    is($fmt, BSD::Sysctl::CTLTYPE_STRING, '... display format type STRING');
     my $confxml = sysctl('kern.geom.confxml');
     ok($confxml, 'value of "kern.geom.confxml" is defined');
     like($confxml, qr(^\s*<([^>]+)>.*</\1>\s*$)m, 'value of "kern.geom.confxml" is XML');
+}
+
+{
+    my $sysctl_info = BSD::Sysctl::_mib_info('vm.zone_stats');
+    ok($sysctl_info, 'mib lookup vm.zone_stats');
+    my ($fmt, @oid) = unpack( 'i i/i', $sysctl_info );
+
+    is($fmt, BSD::Sysctl::CTLTYPE_OPAQUE, '... display format type OPAQUE');
+    my $zst = sysctl('vm.zone_stats');
+    ok($zst, 'value of "vm.zone_stats" is defined');
+    my $maxid = sysctl('kern.smp.maxid');
+    cmp_ok($maxid, '>', 1, "max CPU id is meaningful");
+
+    # struct uma_stream_header
+    my ($version, $maxcpus, $count, $pad) = unpack('L4', $zst);
+    is ($version, 1, 'uma stream version');
+    is ($maxcpus, $maxid + 1, 'uma max cpus');
+    cmp_ok($count, '>', 10, 'uma keg/zone count');
+    is ($pad, 0, 'uma pad');
 }
 
 {
@@ -82,5 +87,5 @@ ok(!sysctl_exists('kern.maxbananas'), 'kern.maxbananas does not exist');
     cmp_ok($nr_files, '>', 0, "got the number of open files again (now $nr_files)");
 }
 
-is(scalar(keys %BSD::Sysctl::MIB_CACHE), 7, 'cached mib count')
+is(scalar(keys %BSD::Sysctl::MIB_CACHE), 8, 'cached mib count')
     or do { diag("cached: [$_]") for sort keys %BSD::Sysctl::MIB_CACHE };
