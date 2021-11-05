@@ -750,6 +750,8 @@ _mib_set(const char *arg, const char *value)
         int oid_len;
         int intval;
         unsigned int uintval;
+        int32_t int32val;
+        uint32_t uint32val;
         long longval;
         unsigned long ulongval;
         void *newval = 0;
@@ -802,6 +804,26 @@ _mib_set(const char *arg, const char *value)
             }
             newval  = &uintval;
             newsize = sizeof(uintval);
+            break;
+
+        case CTLTYPE_S32:
+            int32val = (int32_t)strtol(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid 32-bit integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &int32val;
+            newsize = sizeof(int32val);
+            break;
+
+        case CTLTYPE_U32:
+            uint32val = (uint32_t)strtoul(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid unsigned 32-bit integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &uint32val;
+            newsize = sizeof(uint32val);
             break;
 
         case CTLTYPE_S8:
