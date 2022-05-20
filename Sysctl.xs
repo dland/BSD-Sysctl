@@ -1,5 +1,6 @@
 /* Sysctl.xs -- XS component of BSD-Sysctl
  *
+ * Copyright (C) 2021 Gleb Smirnoff
  * Copyright (C) 2006-2014 David Landgren
  */
 
@@ -7,21 +8,20 @@
 #include "perl.h"
 #include "XSUB.h"
 
-/* define _FreeBSD_version where applicable */
-#if __FreeBSD__ >= 2
-#include <osreldate.h>
-#endif
-
 #include <stdio.h>
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/sysctl.h>
+
+#if __FreeBSD_version <= 1201500
+#define CTL_SYSCTL              0       /* "magic" numbers */
+#define CTL_SYSCTL_NAME         1       /* string name of OID */
+#define CTL_SYSCTL_NEXT         2       /* next OID */
+#define CTL_SYSCTL_OIDFMT       4       /* OID's kind and format */
+#endif
 
 #include <sys/time.h>       /* struct clockinfo */
 #include <sys/vmmeter.h>    /* struct vmtotal */
 #include <sys/resource.h>   /* struct loadavg */
-#if __FreeBSD_version < 1000000
-#include <sys/mbuf.h>       /* struct mbstat (opaque mib) */
-#endif
 #include <sys/timex.h>      /* struct ntptimeval (opaque mib) */
 #include <sys/devicestat.h> /* struct devstat (opaque mib) */
 #include <sys/mount.h>      /* struct xvfsconf (opaque mib) */
@@ -31,9 +31,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
-#if __FreeBSD_version < 500000
-#include <netinet/tcp.h>  /* struct tcpstat prerequisite */
-#endif
 
 #include <netinet/icmp_var.h> /* struct icmpstat */
 #include <netinet/igmp_var.h> /* struct igmpstat */
@@ -48,77 +45,111 @@
 #include <netinet6/raw_ip6.h>
 #include "bsd-sysctl.h"
 
-int
-_init_iterator(HV *self, int *mib, int *miblenp, int valid) {
-    SV **headp;
-    int qoid[CTL_MAXNAME];
-    u_int qoidlen;
-    SV *clen;
-    SV **clenp;
-    int cmplen;
-    int j;
+void
+_iterator_first(HV *self)
+{
+        SV **headp;
+        int name[CTL_MAXNAME];
+        size_t len;
 
-    qoid[0] = 0;
-    qoid[1] = 2;
-    if (valid) {
-        memcpy(qoid+2, mib, (*miblenp) * sizeof(int));
-        qoidlen = *miblenp + 2;
-        *miblenp = (CTL_MAXNAME+2) * sizeof(int);
-        clenp = hv_fetch(self, "_len", 4, 0);
-        cmplen = SvIV(*clenp);
-    }
-    else {
         headp = hv_fetch(self, "head", 4, 0);
-        if (!(headp && *headp)) {
-            croak( "failed to get some head in _init_iterator()\n" );
-        }
+        if (headp == NULL || *headp == NULL)
+                croak( "failed to fetch head in _iterator_first()\n" );
+
         if (SvPOK(*headp)) {
-            /* begin where asked */
-            qoidlen = sizeof(qoid);
-            if (sysctlnametomib( SvPV_nolen(*headp), qoid+2, (size_t*)&qoidlen) == -1) {
-                warn( "_init_iterator(%s): sysctlnametomib lookup failed\n",
-                    SvPV_nolen(*headp)
-                );
-                return 0;
-            }
-            cmplen = qoidlen;
-            qoidlen += 2;
+                /* we were given starting node */
+                len = sizeof(name);
+                if (sysctlnametomib(SvPV_nolen(*headp), name, &len) == -1)
+                        croak("sysctlnametomib(head) failed in _iterator_first\n");
+        } else {
+                /* start at the top like sysctl -a */
+                name[0] = 1;
+                len = 1;
         }
-        else {
-            /* begin at the beginning */
-            qoid[2] = 1;
-            cmplen  = 0;
-            qoidlen = 3;
-        }
-        clen = newSViv(cmplen);
-        SvREFCNT_inc(clen);
-        hv_store(self, "_len", 4, clen, 0);
-    }
 
-    /*
-    printf( "next: " );
-    for (j = 0; j < qoidlen; ++j) {
-        if (j) printf("."); printf("%d", qoid[j]);
-    }
-    printf("\n");
-    */
-
-    /* load the mib */
-    if (sysctl(qoid, qoidlen, mib, (size_t*)miblenp, 0, 0) == -1) {
-        return 0;
-    }
-    *miblenp /= sizeof(int);
-    if (*miblenp < cmplen) {
-        return 0 ;
-    }
-
-    for (j = 0; j < cmplen; ++j) {
-        if (mib[j] != qoid[j+2]) {
-            return 0;
-        }
-    }
-    return 1;
+        hv_store(self, "_next", 5, newSVpvn((char const *) name, len * sizeof(int)), 0);
+        hv_store(self, "_len0", 5, newSViv(len), 0);
+        hv_store(self, "_name", 5, newSVpvn("", 0), 0);
 }
+
+int
+_iterator_next(HV *self)
+{
+        SV *nextp, **len0p, *namep;
+        int *next, name1[CTL_MAXNAME + 2], name2[CTL_MAXNAME + 2];
+        size_t len0, next_len, len1, len2;
+
+        if (! hv_exists(self, "_len0", 5))
+                _iterator_first(self);
+
+        len0p = hv_fetch(self, "_len0", 5, 0);
+        if (len0p == NULL || *len0p == NULL)
+                croak("hv_fetch(_len0) failed in _iterator_next\n");
+        len0 = SvIV(*len0p);
+        
+        nextp = hv_delete(self, "_next", 5, 0);
+        if (nextp == NULL)
+                return 0;
+        next = (int *) SvPV(nextp, next_len);
+        next_len /= sizeof(int);
+
+        namep = hv_delete(self, "_name", 5, 0);
+        if (namep == NULL)
+                return 0;
+
+        name1[0] = CTL_SYSCTL;
+        name1[1] = hv_exists(self, "noskip", 6) ?
+#if __FreeBSD_version >= 1300120
+            CTL_SYSCTL_NEXTNOSKIP
+#else
+            CTL_SYSCTL_NEXT
+#endif
+            : CTL_SYSCTL_NEXT;
+        memcpy((name1 + 2), next, next_len * sizeof(int));
+        len1 = next_len + 2;
+
+        len2 = sizeof(name2);
+        if (sysctl(name1, len1, name2, &len2, 0, 0) < 0) {
+                if (errno == ENOENT)
+                        return (0);
+
+                croak("sysctl(next) failed in _iterator_next()\n");
+        }
+        len2 /= sizeof(int);
+
+        if (len2 < len0)
+                return 0; /* shorter than first */
+        if (memcmp(name2, next, len0 * sizeof(int)) != 0)
+                return 0; /* does not match anymore */
+
+        /* at this point, name2/len2 has next iterator, update _next here */
+        hv_store(self, "_next", 5, newSVpvn((char const *) name2, len2 * sizeof(int)), 0);
+
+        name1[0] = CTL_SYSCTL;
+        name1[1] = CTL_SYSCTL_NAME;
+        memcpy((name1 + 2), name2, len2 * sizeof(int));
+        len1 = len2 + 2;
+
+        len2 = sizeof(name2);
+        if (sysctl(name1, len1, name2, &len2, 0, 0) < 0) {
+                if (errno == ENOENT)
+                        return (0);
+
+                croak("sysctl(name) failed in _iterator_next()\n");
+        }
+
+        /* at this point, name2/len2 has name, update _name here */
+        hv_store(self, "_name", 5, newSVpvn((char const *) name2, len2 - 1), 0);
+
+        return 1;
+}
+
+/*
+ * The below two comparisons must be true for the 64-bit setting code to
+ * work correctly.
+ */
+_Static_assert(LLONG_MAX >= INT64_MAX, "compile-time assertion failed");
+_Static_assert(ULLONG_MAX >= UINT64_MAX, "compile-time assertion failed");
 
 MODULE = BSD::Sysctl   PACKAGE = BSD::Sysctl
 
@@ -127,67 +158,18 @@ PROTOTYPES: ENABLE
 SV *
 next (SV *refself)
     INIT:
-        int mib[CTL_MAXNAME+2];
-        size_t miblen;
-        int qoid[CTL_MAXNAME+2];
-        size_t qoidlen;
-        char name[BUFSIZ];
-        size_t namelen;
         HV *self;
-        SV **ctxp;
-        SV *ctx;
-        SV *cname;
-        int j;
-        int *p;
+        SV **namep;
 
     CODE:
         self = (HV *)SvRV(refself);
-        if ((ctxp = hv_fetch(self, "_ctx", 4, 0))) {
-            p = (int *)SvPVX(*ctxp);
-            miblen = *p++;
-            memcpy(mib, p, miblen * sizeof(int));
 
-            if (!_init_iterator(self, mib, (int*)&miblen, 1)) {
+        if (_iterator_next(self) == 0)
                 XSRETURN_UNDEF;
-            }
-        }
-        else {
-            miblen = sizeof(mib)/sizeof(mib[0]);
-            if (!_init_iterator(self, mib, (int*)&miblen, 0)) {
-                XSRETURN_UNDEF;
-            }
-        }
-
-        qoid[0] = 0;
-        qoid[1] = 1;
-        memcpy(qoid+2, mib, miblen * sizeof(int));
-        qoidlen = miblen + 2;
-
-        bzero(name, BUFSIZ);
-        namelen = sizeof(name);
-        j = sysctl(qoid, qoidlen, name, &namelen, 0, 0);
-        if (j || !namelen) {
-            warn("next(): sysctl name failure %d %zu %d", j, namelen, errno);
-            XSRETURN_UNDEF;
-        }
-        cname = newSVpvn(name, namelen-1);
-        SvREFCNT_inc(cname);
-        hv_store(self, "_name", 5, cname, 0);
-        RETVAL = cname;
-
-        /* reuse qoid to build context store
-         *  - the length of the mib
-         *  - followed by the mib values
-         * and copy to an SV to save in the self hash
-         */
-        p = qoid;
-        memcpy(p++, (const void *)&miblen, sizeof(int));
-        memcpy(p, (const void *)mib, miblen * sizeof(int));
-
-        ctx = newSVpvn((const char *)qoid, (miblen+1) * sizeof(int));
-        SvREFCNT_inc(ctx);
-        hv_store(self, "_ctx", 4, ctx, 0);
-
+        
+        namep = hv_fetch(self, "_name", 5, 0);
+        SvREFCNT_inc(*namep);
+        RETVAL = *namep;
     OUTPUT:
         RETVAL
 
@@ -210,6 +192,7 @@ _mib_info(const char *arg)
         char fmt[BUFSIZ];
         size_t len = sizeof(fmt);
         int fmt_type;
+        u_int *kind = (u_int *)fmt;
         char *f = fmt + sizeof(int);
         char res[BUFSIZ];
         char *resp = res;
@@ -225,69 +208,39 @@ _mib_info(const char *arg)
         nr_octets = miblen;
 
         /* determine how to format the results */
-        mib[0] = 0;
-        mib[1] = 4;
+        mib[0] = CTL_SYSCTL;
+        mib[1] = CTL_SYSCTL_OIDFMT;
         if (sysctl(mib, nr_octets+2, fmt, &len, NULL, 0) == -1) {
             XSRETURN_UNDEF;
         }
 
-        switch (*f) {
-        case 'A':
-            fmt_type = FMT_A;
-            break;
-        case 'I':
-            ++f;
-            fmt_type = *f == 'U' ? FMT_UINT : FMT_INT;
-            break;
-        case 'L':
-            ++f;
-            fmt_type = *f == 'U' ? FMT_ULONG : FMT_LONG;
-            break;
-        case 'Q':
-            ++f;
-            fmt_type = *f == 'U' ? FMT_U64 : FMT_64;
-            break;
-        case 'S': {
-            if (strcmp(f,"S,clockinfo") == 0)    { fmt_type = FMT_CLOCKINFO; }
-            else if (strcmp(f,"S,loadavg") == 0) { fmt_type = FMT_LOADAVG; }
-            else if (strcmp(f,"S,timeval") == 0) { fmt_type = FMT_TIMEVAL; }
-            else if (strcmp(f,"S,vmtotal") == 0) { fmt_type = FMT_VMTOTAL; }
+        /*
+         * Trust what digital kind marker says rather than string format.
+         * Parse the format only in search for the structs that we know.
+         */
+	*kind &= CTLTYPE;
+        if (*kind == CTLTYPE_OPAQUE) {
+            if (strcmp(f,"S,clockinfo") == 0)    { fmt_type = CTLTYPE_CLOCKINFO; }
+            else if (strcmp(f,"S,loadavg") == 0) { fmt_type = CTLTYPE_LOADAVG; }
+            else if (strcmp(f,"S,timeval") == 0) { fmt_type = CTLTYPE_TIMEVAL; }
+            else if (strcmp(f,"S,vmtotal") == 0) { fmt_type = CTLTYPE_VMTOTAL; }
             /* now the opaque OIDs */
-            else if (strcmp(f,"S,bootinfo") == 0)   { fmt_type = FMT_BOOTINFO; }
-            else if (strcmp(f,"S,devstat") == 0)    { fmt_type = FMT_DEVSTAT; }
-            else if (strcmp(f,"S,icmpstat") == 0)   { fmt_type = FMT_ICMPSTAT; }
-            else if (strcmp(f,"S,igmpstat") == 0)   { fmt_type = FMT_IGMPSTAT; }
-            else if (strcmp(f,"S,ipstat") == 0)     { fmt_type = FMT_IPSTAT; }
-            else if (strcmp(f,"S,mbstat") == 0)     { fmt_type = FMT_MBSTAT; } /* removed in FreeBSD 10 */
-            else if (strcmp(f,"S,nfsrvstats") == 0) { fmt_type = FMT_NFSRVSTATS; }
-            else if (strcmp(f,"S,nfsstats") == 0)   { fmt_type = FMT_NFSSTATS; }
-            else if (strcmp(f,"S,ntptimeval") == 0) { fmt_type = FMT_NTPTIMEVAL; }
-            else if (strcmp(f,"S,rip6stat") == 0)   { fmt_type = FMT_RIP6STAT; }
-            else if (strcmp(f,"S,tcpstat") == 0)    { fmt_type = FMT_TCPSTAT; }
-            else if (strcmp(f,"S,udpstat") == 0)    { fmt_type = FMT_UDPSTAT; }
-            else if (strcmp(f,"S,xinpcb") == 0)     { fmt_type = FMT_XINPCB; }
-            else if (strcmp(f,"S,xvfsconf") == 0)   { fmt_type = FMT_XVFSCONF; }
-            else {
-                /* bleah */
-            }
-            break;
-        }
-        case 'T': {
-            if (strcmp(f,"T,struct cdev *") == 0) {
-                fmt_type = FMT_STRUCT_CDEV;
-            }
-            else {
-                /* bleah */
-            }
-            break;
-        }
-        case 'N':
-            fmt_type = FMT_N;
-            break;
-        default:
-            fmt_type = FMT_A;
-            break;
-        }
+            else if (strcmp(f,"S,bootinfo") == 0)   { fmt_type = CTLTYPE_BOOTINFO; }
+            else if (strcmp(f,"S,devstat") == 0)    { fmt_type = CTLTYPE_DEVSTAT; }
+            else if (strcmp(f,"S,icmpstat") == 0)   { fmt_type = CTLTYPE_ICMPSTAT; }
+            else if (strcmp(f,"S,igmpstat") == 0)   { fmt_type = CTLTYPE_IGMPSTAT; }
+            else if (strcmp(f,"S,ipstat") == 0)     { fmt_type = CTLTYPE_IPSTAT; }
+            else if (strcmp(f,"S,nfsrvstats") == 0) { fmt_type = CTLTYPE_NFSRVSTATS; }
+            else if (strcmp(f,"S,nfsstats") == 0)   { fmt_type = CTLTYPE_NFSSTATS; }
+            else if (strcmp(f,"S,ntptimeval") == 0) { fmt_type = CTLTYPE_NTPTIMEVAL; }
+            else if (strcmp(f,"S,rip6stat") == 0)   { fmt_type = CTLTYPE_RIP6STAT; }
+            else if (strcmp(f,"S,tcpstat") == 0)    { fmt_type = CTLTYPE_TCPSTAT; }
+            else if (strcmp(f,"S,udpstat") == 0)    { fmt_type = CTLTYPE_UDPSTAT; }
+            else if (strcmp(f,"S,xinpcb") == 0)     { fmt_type = CTLTYPE_XINPCB; }
+            else if (strcmp(f,"S,xvfsconf") == 0)   { fmt_type = CTLTYPE_XVFSCONF; }
+            else { fmt_type = CTLTYPE_OPAQUE; }
+        } else
+            fmt_type = *kind;
 
         /* first two bytes indicate format type */
         memcpy(resp, (void *)&fmt_type, sizeof(int));
@@ -338,6 +291,21 @@ _mib_description(const char *arg)
         RETVAL = newSVpvn(desc, len-1);
     OUTPUT:
         RETVAL
+
+#define DECODE(T)                                                             \
+            if (buflen == sizeof(T)) {                                        \
+                RETVAL = newSViv(*(T *)buf);                                  \
+            }                                                                 \
+            else {                                                            \
+                AV *c = (AV *)sv_2mortal((SV *)newAV());                      \
+                char *bptr = buf;                                             \
+                while (buflen >= sizeof(T)) {                                 \
+                    av_push(c, newSViv(*(T *)bptr));                          \
+                    buflen -= sizeof(T);                                      \
+                    bptr   += sizeof(T);                                      \
+                }                                                             \
+                RETVAL = newRV((SV *)c);                                      \
+            }
 
 SV *
 _mib_lookup(const char *arg)
@@ -393,102 +361,46 @@ _mib_lookup(const char *arg)
         }
 
         switch(oid_fmt) {
-        case FMT_A:
+        case CTLTYPE_STRING:
+            if (buf[buflen - 1] == '\0')  /* Shall always be true. */
+                buflen--;
+        case CTLTYPE_OPAQUE:
             SvPOK_on(sv_buf);
             SvCUR_set(sv_buf, buflen);
             RETVAL = sv_buf;
             break;
-        case FMT_INT:
-            if (buflen == sizeof(int)) {
-                RETVAL = newSViv(*(int *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(int)) {
-                    av_push(c, newSViv(*(int *)bptr));
-                    buflen -= sizeof(int);
-                    bptr   += sizeof(int);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+        case CTLTYPE_S8:
+            DECODE(int8_t);
             break;
-        case FMT_UINT:
-            if (buflen == sizeof(unsigned int)) {
-                RETVAL = newSViv(*(unsigned int *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(unsigned int)) {
-                    av_push(c, newSViv(*(unsigned int *)bptr));
-                    buflen -= sizeof(unsigned int);
-                    bptr   += sizeof(unsigned int);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+        case CTLTYPE_U8:
+            DECODE(uint8_t);
             break;
-        case FMT_LONG:
-            if (buflen == sizeof(long)) {
-                RETVAL = newSVuv(*(long *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(long)) {
-                    av_push(c, newSVuv(*(long *)bptr));
-                    buflen -= sizeof(long);
-                    bptr   += sizeof(long);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+        case CTLTYPE_INT:
+            DECODE(int);
             break;
-        case FMT_ULONG:
-            if (buflen == sizeof(unsigned long)) {
-                RETVAL = newSVuv(*(unsigned long *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(unsigned long)) {
-                    av_push(c, newSVuv(*(unsigned long *)bptr));
-                    buflen -= sizeof(unsigned long);
-                    bptr   += sizeof(unsigned long);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+        case CTLTYPE_UINT:
+            DECODE(unsigned int);
             break;
-        case FMT_64:
-            if (buflen == sizeof(int64_t)) {
-                RETVAL = newSVuv(*(int64_t *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(int64_t)) {
-                    av_push(c, newSVuv(*(int64_t *)bptr));
-                    buflen -= sizeof(int64_t);
-                    bptr   += sizeof(int64_t);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+        case CTLTYPE_S32:
+            DECODE(int32_t);
             break;
-        case FMT_U64:
-            if (buflen == sizeof(uint64_t)) {
-                RETVAL = newSVuv(*(uint64_t *)buf);
-            }
-            else {
-                AV *c = (AV *)sv_2mortal((SV *)newAV());
-                char *bptr = buf;
-                while (buflen >= sizeof(uint64_t)) {
-                    av_push(c, newSVuv(*(uint64_t *)bptr));
-                    buflen -= sizeof(uint64_t);
-                    bptr   += sizeof(uint64_t);
-                }
-                RETVAL = newRV((SV *)c);
-            }
+        case CTLTYPE_U32:
+            DECODE(uint32_t);
             break;
-        case FMT_CLOCKINFO: {
+        case CTLTYPE_LONG:
+            DECODE(long);
+            break;
+        case CTLTYPE_ULONG:
+            DECODE(unsigned long);
+            break;
+        case CTLTYPE_S64:
+            DECODE(int64_t);
+            break;
+        case CTLTYPE_U64:
+            DECODE(uint64_t);
+            break;
+#undef DECODE
+        case CTLTYPE_CLOCKINFO: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct clockinfo *inf = (struct clockinfo *)buf;
             RETVAL = newRV((SV *)c);
@@ -498,7 +410,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "stathz", 6, newSViv(inf->stathz), 0);
             break;
         }
-        case FMT_VMTOTAL: {
+        case CTLTYPE_VMTOTAL: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct vmtotal *inf = (struct vmtotal *)buf;
             RETVAL = newRV((SV *)c);
@@ -518,7 +430,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "pagefree",          8, newSViv(inf->t_free), 0);
             break;
         }
-        case FMT_LOADAVG: {
+        case CTLTYPE_LOADAVG: {
             AV *c = (AV *)sv_2mortal((SV *)newAV());
             struct loadavg *inf = (struct loadavg *)buf;
             double scale = inf->fscale;
@@ -529,7 +441,7 @@ _mib_lookup(const char *arg)
             av_store(c, 2, newSVnv((double)inf->ldavg[2]/scale));
             break;
         }
-        case FMT_TIMEVAL: {
+        case CTLTYPE_TIMEVAL: {
             struct timeval *inf = (struct timeval *)buf;
             RETVAL = newSVnv(
                 (double)inf->tv_sec + ((double)inf->tv_usec/1000000)
@@ -537,39 +449,7 @@ _mib_lookup(const char *arg)
             break;
         }
         /* the remaining custom formats are for opaque mibs */
-#if __FreeBSD_version < 1000000
-        case FMT_MBSTAT: {
-            HV *c = (HV *)sv_2mortal((SV *)newHV());
-            struct mbstat *inf = (struct mbstat *)buf;
-            RETVAL = newRV((SV *)c);
-            hv_store(c, "copymfail",      9, newSVuv(inf->m_mcfail), 0);
-            hv_store(c, "pullupfail",    10, newSVuv(inf->m_mpfail), 0);
-            hv_store(c, "mbufsize",       8, newSVuv(inf->m_msize), 0);
-            hv_store(c, "mclustsize",    10, newSVuv(inf->m_mclbytes), 0);
-            hv_store(c, "minclsize",      9, newSVuv(inf->m_minclsize), 0);
-            hv_store(c, "mbuflen",        7, newSVuv(inf->m_mlen), 0);
-            hv_store(c, "mbufhead",       8, newSVuv(inf->m_mhlen), 0);
-            hv_store(c, "drain",          5, newSVuv(inf->m_drain), 0);
-#if __FreeBSD_version < 500000
-            hv_store(c, "numtypes",       8, newSVpvn("", 0), 0);
-#else
-            hv_store(c, "numtypes",       8, newSViv(inf->m_numtypes), 0);
-#endif
-#if __FreeBSD_version < 600000
-            hv_store(c, "mbufs",          5, newSVpvn("", 0), 0);
-            hv_store(c, "mclusts",        7, newSVpvn("", 0), 0);
-            hv_store(c, "sfallocwait",   11, newSVpvn("", 0), 0);
-            hv_store(c, "sfiocnt",        7, newSVpvn("", 0), 0);
-#else
-            hv_store(c, "mbufs",          5, newSVuv(inf->m_mbufs), 0);
-            hv_store(c, "mclusts",        7, newSVuv(inf->m_mclusts), 0);
-            hv_store(c, "sfallocwait",   11, newSVuv(inf->sf_allocwait), 0);
-            hv_store(c, "sfiocnt",        7, newSVuv(inf->sf_iocnt), 0);
-#endif
-            break;
-        }
-#endif
-        case FMT_NTPTIMEVAL: {
+        case CTLTYPE_NTPTIMEVAL: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct ntptimeval *inf = (struct ntptimeval *)buf;
             RETVAL = newRV((SV *)c);
@@ -581,31 +461,53 @@ _mib_lookup(const char *arg)
             hv_store(c, "timestate",  9, newSViv(inf->time_state), 0);
             break;
         }
-        case FMT_DEVSTAT: {
+        case CTLTYPE_DEVSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
-            struct devstat *inf = (struct devstat *)buf;
+            struct devstat *inf = (struct devstat *)(buf + sizeof(buf));
             RETVAL = newRV((SV *)c);
-            hv_store(c, "devno",           5, newSViv(inf->device_number), 0);
-            hv_store(c, "unitno",          6, newSViv(inf->unit_number), 0);
-#if __FreeBSD_version < 500000
-            hv_store(c, "sequence",        8, newSVpvn("", 0), 0);
-            hv_store(c, "allocated",       9, newSVpvn("", 0), 0);
-            hv_store(c, "startcount",     10, newSVpvn("", 0), 0);
-            hv_store(c, "endcount",        8, newSVpvn("", 0), 0);
-            hv_store(c, "busyfromsec",    11, newSVpvn("", 0), 0);
-            hv_store(c, "busyfromfrac",   12, newSVpvn("", 0), 0);
-#else
-            hv_store(c, "sequence",        8, newSVuv(inf->sequence0), 0);
-            hv_store(c, "allocated",       9, newSViv(inf->allocated), 0);
-            hv_store(c, "startcount",     10, newSViv(inf->start_count), 0);
-            hv_store(c, "endcount",        8, newSViv(inf->end_count), 0);
-            hv_store(c, "busyfromsec",    11, newSViv(inf->busy_from.sec), 0);
-            hv_store(c, "busyfromfrac",   12, newSVuv(inf->busy_from.frac), 0);
-#endif
+            char *p = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            do {
+                char name[BUFSIZ];
+                strcpy(name, "#.devno"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->device_number), 0);
+                strcpy(name, "#.device_name"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVpvn(inf->device_name, strlen(inf->device_name)), 0);
+                strcpy(name, "#.unitno"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->unit_number), 0);
+                strcpy(name, "#.sequence"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->sequence0), 0);
+                strcpy(name, "#.allocated"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->allocated), 0);
+                strcpy(name, "#.startcount"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->start_count), 0);
+                strcpy(name, "#.endcount"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->end_count), 0);
+                strcpy(name, "#.busyfromsec"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSViv(inf->busy_from.sec), 0);
+                strcpy(name, "#.busyfromfrac"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->busy_from.frac), 0);
+                strcpy(name, "#.bytes_no_data"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_NO_DATA]), 0);
+                strcpy(name, "#.bytes_read"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_READ]), 0);
+                strcpy(name, "#.bytes_write"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_WRITE]), 0);
+                strcpy(name, "#.bytes_free"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->bytes[DEVSTAT_FREE]), 0);
+                strcpy(name, "#.operations_no_data"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_NO_DATA]), 0);
+                strcpy(name, "#.operations_read"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_READ]), 0);
+                strcpy(name, "#.operations_write"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_WRITE]), 0);
+                strcpy(name, "#.operations_free"); name[0] = *p;
+                hv_store(c, name, strlen(name), newSVuv(inf->operations[DEVSTAT_FREE]), 0);
+                ++p;
+                ++inf;
+            } while (inf < (struct devstat *)(buf + buflen));
             break;
         }
-#if __FreeBSD_version >= 500000
-        case FMT_XVFSCONF: {
+        case CTLTYPE_XVFSCONF: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct xvfsconf *inf = (struct xvfsconf *)buf;
             RETVAL = newRV((SV *)c);
@@ -615,8 +517,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "flags",        5, newSViv(inf->vfc_flags), 0);
             break;
         }
-#endif
-        case FMT_ICMPSTAT: {
+        case CTLTYPE_ICMPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct icmpstat *inf = (struct icmpstat *)buf;
             RETVAL = newRV((SV *)c);
@@ -632,21 +533,10 @@ _mib_lookup(const char *arg)
             hv_store(c, "noroute",       7, newSViv(inf->icps_noroute), 0);
             break;
         }
-        case FMT_IGMPSTAT: {
+        case CTLTYPE_IGMPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct igmpstat *inf = (struct igmpstat *)buf;
             RETVAL = newRV((SV *)c);
-#if __FreeBSD_version < 800070
-            hv_store(c, "total",       5, newSVuv(inf->igps_rcv_total), 0);
-            hv_store(c, "tooshort",    8, newSVuv(inf->igps_rcv_tooshort), 0);
-            hv_store(c, "badsum",      6, newSVuv(inf->igps_rcv_badsum), 0);
-            hv_store(c, "queries",     7, newSVuv(inf->igps_rcv_queries), 0);
-            hv_store(c, "badqueries", 10, newSVuv(inf->igps_rcv_badqueries), 0);
-            hv_store(c, "reports",     7, newSVuv(inf->igps_rcv_reports), 0);
-            hv_store(c, "badreports", 10, newSVuv(inf->igps_rcv_badreports), 0);
-            hv_store(c, "ourreports", 10, newSVuv(inf->igps_rcv_ourreports), 0);
-            hv_store(c, "sent",        4, newSVuv(inf->igps_snd_reports), 0);
-#else
             /* Message statistics */
             hv_store(c, "total",             5, newSVuv(inf->igps_rcv_total), 0);
             hv_store(c, "tooshort",          8, newSVuv(inf->igps_rcv_tooshort), 0);
@@ -667,10 +557,9 @@ _mib_lookup(const char *arg)
             hv_store(c, "ourreports",       10, newSVuv(inf->igps_rcv_ourreports), 0);
             hv_store(c, "nore",              4, newSVuv(inf->igps_rcv_nora), 0);
             hv_store(c, "sent",              4, newSVuv(inf->igps_snd_reports), 0);
-#endif
             break;
         }
-        case FMT_TCPSTAT: {
+        case CTLTYPE_TCPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct tcpstat *inf = (struct tcpstat *)buf;
             RETVAL = newRV((SV *)c);
@@ -751,26 +640,10 @@ _mib_lookup(const char *arg)
             hv_store(c, "zonefail",          8, newSVuv(inf->tcps_sc_zonefail), 0);
             hv_store(c, "sendcookie",       10, newSVuv(inf->tcps_sc_sendcookie), 0);
             hv_store(c, "recvcookie",       10, newSVuv(inf->tcps_sc_recvcookie), 0);
-#if __FreeBSD_version < 500000
-            hv_store(c, "minmssdrops",      11, newSVpvn("", 0), 0);
-            hv_store(c, "sendrexmitbad",    13, newSVpvn("", 0), 0);
-            hv_store(c, "hostcacheadd",     12, newSVpvn("", 0), 0);
-            hv_store(c, "hostcacheover",    13, newSVpvn("", 0), 0);
-#else
             hv_store(c, "minmssdrops",      11, newSVuv(inf->tcps_minmssdrops), 0);
             hv_store(c, "sendrexmitbad",    13, newSVuv(inf->tcps_sndrexmitbad), 0);
             hv_store(c, "hostcacheadd",     12, newSVuv(inf->tcps_hc_added), 0);
             hv_store(c, "hostcacheover",    13, newSVuv(inf->tcps_hc_bucketoverflow), 0);
-#endif
-#if __FreeBSD_version < 600000
-            hv_store(c, "badrst",            6, newSVpvn("", 0), 0);
-            hv_store(c, "sackrecover",      11, newSVpvn("", 0), 0);
-            hv_store(c, "sackrexmitsegs",   14, newSVpvn("", 0), 0);
-            hv_store(c, "sackrexmitbytes",  15, newSVpvn("", 0), 0);
-            hv_store(c, "sackrecv",          8, newSVpvn("", 0), 0);
-            hv_store(c, "sacksend",          8, newSVpvn("", 0), 0);
-            hv_store(c, "sackscorebover",   14, newSVpvn("", 0), 0);
-#else
             hv_store(c, "badrst",            6, newSVuv(inf->tcps_badrst), 0);
             hv_store(c, "sackrecover",      11, newSVuv(inf->tcps_sack_recovery_episode), 0);
             hv_store(c, "sackrexmitsegs",   14, newSVuv(inf->tcps_sack_rexmits), 0);
@@ -778,10 +651,9 @@ _mib_lookup(const char *arg)
             hv_store(c, "sackrecv",          8, newSVuv(inf->tcps_sack_rcv_blocks), 0);
             hv_store(c, "sacksend",          8, newSVuv(inf->tcps_sack_send_blocks), 0);
             hv_store(c, "sackscorebover",   14, newSVuv(inf->tcps_sack_sboverflow), 0);
-#endif
             break;
         }
-        case FMT_UDPSTAT: {
+        case CTLTYPE_UDPSTAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct udpstat *inf = (struct udpstat *)buf;
             RETVAL = newRV((SV *)c);
@@ -799,7 +671,7 @@ _mib_lookup(const char *arg)
             hv_store(c, "noportmcast",    11, newSVuv(inf->udps_noportmcast), 0);
             break;
         }
-        case FMT_RIP6STAT: {
+        case CTLTYPE_RIP6STAT: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct rip6stat *inf = (struct rip6stat *)buf;
             RETVAL = newRV((SV *)c);
@@ -814,7 +686,7 @@ _mib_lookup(const char *arg)
             break;
         }
 #ifdef BOOTINFO_VERSION
-        case FMT_BOOTINFO: {
+        case CTLTYPE_BOOTINFO: {
             HV *c = (HV *)sv_2mortal((SV *)newHV());
             struct bootinfo *inf = (struct bootinfo *)buf;
             RETVAL = newRV((SV *)c);
@@ -829,30 +701,20 @@ _mib_lookup(const char *arg)
             /* don't know if any IA64 fields are useful,
              * (as per /usr/src/sys/ia64/include/bootinfo.h)
              */
-#ifdef __ia64
-            hv_store(c, "biosused",       8, newSVpvn("", 0), 0);
-            hv_store(c, "size",           4, newSVpvn("", 0), 0);
-            hv_store(c, "msizevalid",    10, newSVpvn("", 0), 0);
-            hv_store(c, "biosdev",        7, newSVpvn("", 0), 0);
-            hv_store(c, "basemem",        7, newSVpvn("", 0), 0);
-            hv_store(c, "extmem",         6, newSVpvn("", 0), 0);
-#else
             hv_store(c, "biosused",       8, newSVuv(inf->bi_n_bios_used), 0);
             hv_store(c, "size",           4, newSVuv(inf->bi_size), 0);
             hv_store(c, "msizevalid",    10, newSVuv(inf->bi_memsizes_valid), 0);
             hv_store(c, "biosdev",        7, newSVuv(inf->bi_bios_dev), 0);
             hv_store(c, "basemem",        7, newSVuv(inf->bi_basemem), 0);
             hv_store(c, "extmem",         6, newSVuv(inf->bi_extmem), 0);
-#endif
             break;
         }
 #endif
-        case FMT_N:
-        case FMT_IPSTAT:
-        case FMT_NFSRVSTATS:
-        case FMT_NFSSTATS:
-        case FMT_XINPCB:
-        case FMT_STRUCT_CDEV:
+        case CTLTYPE_NODE:
+        case CTLTYPE_IPSTAT:
+        case CTLTYPE_NFSRVSTATS:
+        case CTLTYPE_NFSSTATS:
+        case CTLTYPE_XINPCB:
             /* don't know how to interpret the results */
             SvREFCNT_dec(sv_buf);
             XSRETURN_IV(0);
@@ -864,7 +726,7 @@ _mib_lookup(const char *arg)
             break;
         }
 
-        if (oid_fmt != FMT_A) {
+        if (oid_fmt != CTLTYPE_STRING && oid_fmt != CTLTYPE_OPAQUE) {
             SvREFCNT_dec(sv_buf);
         }
 
@@ -878,10 +740,18 @@ _mib_set(const char *arg, const char *value)
         SV **oidp;
         SV *oid;
         char *oid_data;
+        int64_t int64val;
+        long long llval;
+        uint64_t uint64val;
+        unsigned long long ullval;
+        int8_t int8val;
+        uint8_t uint8val;
         int oid_fmt;
         int oid_len;
         int intval;
         unsigned int uintval;
+        int32_t int32val;
+        uint32_t uint32val;
         long longval;
         unsigned long ulongval;
         void *newval = 0;
@@ -911,12 +781,12 @@ _mib_set(const char *arg, const char *value)
         oid_data += sizeof(int);
         
         switch(oid_fmt) {
-        case FMT_A:
+        case CTLTYPE_STRING:
             newval  = (void *)value;
             newsize = strlen(value);
             break;
 
-        case FMT_INT:
+        case CTLTYPE_INT:
             intval = (int)strtol(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid integer: '%s'", value);
@@ -926,7 +796,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(intval);
             break;
 
-        case FMT_UINT:
+        case CTLTYPE_UINT:
             uintval = (unsigned int)strtoul(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid unsigned integer: '%s'", value);
@@ -936,7 +806,47 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(uintval);
             break;
 
-        case FMT_LONG:
+        case CTLTYPE_S32:
+            int32val = (int32_t)strtol(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid 32-bit integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &int32val;
+            newsize = sizeof(int32val);
+            break;
+
+        case CTLTYPE_U32:
+            uint32val = (uint32_t)strtoul(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid unsigned 32-bit integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &uint32val;
+            newsize = sizeof(uint32val);
+            break;
+
+        case CTLTYPE_S8:
+            int8val = (int8_t)strtol(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &int8val;
+            newsize = sizeof(int8val);
+            break;
+
+        case CTLTYPE_U8:
+            uint8val = (uint8_t)strtoul(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0') {
+                warn("invalid unsigned integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+            newval  = &uint8val;
+            newsize = sizeof(uint8val);
+            break;
+
+        case CTLTYPE_LONG:
             longval = strtol(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid long integer: '%s'", value);
@@ -946,7 +856,7 @@ _mib_set(const char *arg, const char *value)
             newsize = sizeof(longval);
             break;
 
-        case FMT_ULONG:
+        case CTLTYPE_ULONG:
             ulongval = strtoul(value, &endconvptr, 0);
             if (endconvptr == value || *endconvptr != '\0') {
                 warn("invalid unsigned long integer: '%s'", value);
@@ -954,6 +864,41 @@ _mib_set(const char *arg, const char *value)
             }
             newval  = &ulongval;
             newsize = sizeof(ulongval);
+            break;
+        case CTLTYPE_S64:
+            llval = strtoll(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0' ||
+                (llval == 0 && errno == EINVAL)) {
+                warn("invalid 64-bit integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+#if (LLONG_MAX > INT64_MAX)
+            if (llval < INT64_MIN)
+                int64val = INT64_MIN;
+            else if (llval > INT64_MAX)
+                int64val = INT64_MAX;
+            else
+#endif
+                int64val = (int64_t)llval;
+            newval  = &int64val;
+            newsize = sizeof(int64val);
+            break;
+
+        case CTLTYPE_U64:
+            ullval = strtoull(value, &endconvptr, 0);
+            if (endconvptr == value || *endconvptr != '\0' ||
+                (ullval == 0 && errno == EINVAL)) {
+                warn("invalid unsigned 64-bit integer: '%s'", value);
+                XSRETURN_UNDEF;
+            }
+#if (ULLONG_MAX > UINT64_MAX)
+            if (ullval > UINT64_MAX)
+                uint64val = UINT64_MAX;
+            else
+#endif
+                uint64val = (uint64_t)ullval;
+            newval  = &uint64val;
+            newsize = sizeof(uint64val);
             break;
         }
         

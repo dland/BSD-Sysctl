@@ -1,5 +1,6 @@
 # BSD::Sysctl.pm - Access BSD sysctl(8) information directly
 #
+# Copyright (C) 2021 Gleb Smirnoff, all rights reserved.
 # Copyright (C) 2006-2014 David Landgren, all rights reserved.
 
 package BSD::Sysctl;
@@ -12,36 +13,10 @@ use XSLoader;
 
 use vars qw($VERSION @ISA %MIB_CACHE %MIB_SKIP @EXPORT_OK);
 
-$VERSION = '0.11';
+$VERSION = '0.12';
 @ISA     = qw(Exporter);
 
-use constant FMT_A           =>  1;
-use constant FMT_INT         =>  2;
-use constant FMT_UINT        =>  3;
-use constant FMT_LONG        =>  4;
-use constant FMT_ULONG       =>  5;
-use constant FMT_N           =>  6;
-use constant FMT_BOOTINFO    =>  7;
-use constant FMT_CLOCKINFO   =>  8;
-use constant FMT_DEVSTAT     =>  9;
-use constant FMT_ICMPSTAT    => 10;
-use constant FMT_IGMPSTAT    => 11;
-use constant FMT_IPSTAT      => 12;
-use constant FMT_LOADAVG     => 13;
-use constant FMT_MBSTAT      => 14;
-use constant FMT_NFSRVSTATS  => 15;
-use constant FMT_NFSSTATS    => 16;
-use constant FMT_NTPTIMEVAL  => 17;
-use constant FMT_RIP6STAT    => 18;
-use constant FMT_TCPSTAT     => 19;
-use constant FMT_TIMEVAL     => 20;
-use constant FMT_UDPSTAT     => 21;
-use constant FMT_VMTOTAL     => 22;
-use constant FMT_XINPCB      => 23;
-use constant FMT_XVFSCONF    => 24;
-use constant FMT_STRUCT_CDEV => 25;
-use constant FMT_64          => 26;
-use constant FMT_U64         => 27;
+#include bsd-sysctl.ph
 
 push @EXPORT_OK, 'sysctl';
 sub sysctl {
@@ -85,10 +60,11 @@ sub set {
 }
 
 sub iterator {
-    my $class = shift;
-    my $name  = shift;
+    my ($class, $name, %args) = @_;
     my $self;
+
     $self->{head} = $name || undef;
+    $self->{noskip} = 1 if (defined($args{noskip}));
     return bless $self, $class;
 }
 
@@ -105,7 +81,9 @@ sub value {
 
 sub reset {
     my $self = shift;
-    delete $self->{_ctx};
+    delete $self->{_next};
+    delete $self->{_name};
+    delete $self->{_len0};
     return $self;
 }
 
@@ -117,8 +95,7 @@ BSD::Sysctl - Manipulate kernel sysctl variables on BSD-like systems
 
 =head1 VERSION
 
-This document describes version 0.11 of BSD::Sysctl, released
-2014-01-22.
+This document describes version 0.12 of BSD::Sysctl
 
 =head1 SYNOPSIS
 
@@ -260,6 +237,11 @@ fails, undef is returned.
     print $k->name, '=', $k->value, "\n";
   }
 
+To force iteration through variables that are marked with CTLFLAG_SKIP
+use 'noskip' argument:
+
+  my $k = BSD::Sysctl->iterator( 'kern', ( noskip => 1 ));
+
 =item next
 
 Moves the iterator to the next sysctl variable and loads the
@@ -349,7 +331,7 @@ at least for the time being. This is a bug that should be reported.
 
 =head1 LIMITATIONS
 
-At the current time, FreeBSD versions 4.x through 8.x are
+At the current time only officially supported FreeBSD versions are
 supported.
 
 I am looking for volunteers to help port this module to NetBSD and
@@ -358,12 +340,6 @@ If you are interested in helping, please consult the README file
 for more information.
 
 =head1 BUGS
-
-Some branches are not iterated on FreeBSD 4 (and perl 5.6.1). Most
-notably, the C<vm.stats> branch. I am not sure of the reason, but
-it's a failure in a C<sysctl> system call, so it could be related
-to that release. As FreeBSD 4.x reached the end of its supported
-life in 2007, I'm not particularly fussed.
 
 Please report all bugs at
 L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=BSD-Sysctl|rt.cpan.org>.

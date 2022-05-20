@@ -8,7 +8,7 @@ use Test::More tests => 15;
 
 use BSD::Sysctl;
 
-my $it = BSD::Sysctl->iterator('kern.ipc');
+my $it = BSD::Sysctl->iterator('kern.ipc', ( noskip => 1 ));
 ok( defined($it), 'defined a BSD::Sysctl iterator' );
 
 my $sysctl_binary;

@@ -1,8 +1,6 @@
 Changes
-LICENSE
 Makefile.PL
 MANIFEST
-MANIFEST.SKIP
 META.yml			Module meta-data (added by MakeMaker)
 README
 Sysctl.pm
