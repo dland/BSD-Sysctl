@@ -225,7 +225,6 @@ _mib_info(const char *arg)
             else if (strcmp(f,"S,timeval") == 0) { fmt_type = CTLTYPE_TIMEVAL; }
             else if (strcmp(f,"S,vmtotal") == 0) { fmt_type = CTLTYPE_VMTOTAL; }
             /* now the opaque OIDs */
-            else if (strcmp(f,"S,bootinfo") == 0)   { fmt_type = CTLTYPE_BOOTINFO; }
             else if (strcmp(f,"S,devstat") == 0)    { fmt_type = CTLTYPE_DEVSTAT; }
             else if (strcmp(f,"S,icmpstat") == 0)   { fmt_type = CTLTYPE_ICMPSTAT; }
             else if (strcmp(f,"S,igmpstat") == 0)   { fmt_type = CTLTYPE_IGMPSTAT; }
@@ -685,31 +684,6 @@ _mib_lookup(const char *arg)
             hv_store(c, "outpackets",     10, newSVnv(inf->rip6s_opackets), 0);
             break;
         }
-#ifdef BOOTINFO_VERSION
-        case CTLTYPE_BOOTINFO: {
-            HV *c = (HV *)sv_2mortal((SV *)newHV());
-            struct bootinfo *inf = (struct bootinfo *)buf;
-            RETVAL = newRV((SV *)c);
-            /* ignore the following fields for the time being:
-             * bi_bios_geom
-             * bi_kernelname
-             * bi_nfs_diskless
-             * bi_symtab
-             * bi_esymtab
-             */
-            hv_store(c, "version",        7, newSVuv(inf->bi_version), 0);
-            /* don't know if any IA64 fields are useful,
-             * (as per /usr/src/sys/ia64/include/bootinfo.h)
-             */
-            hv_store(c, "biosused",       8, newSVuv(inf->bi_n_bios_used), 0);
-            hv_store(c, "size",           4, newSVuv(inf->bi_size), 0);
-            hv_store(c, "msizevalid",    10, newSVuv(inf->bi_memsizes_valid), 0);
-            hv_store(c, "biosdev",        7, newSVuv(inf->bi_bios_dev), 0);
-            hv_store(c, "basemem",        7, newSVuv(inf->bi_basemem), 0);
-            hv_store(c, "extmem",         6, newSVuv(inf->bi_extmem), 0);
-            break;
-        }
-#endif
         case CTLTYPE_NODE:
         case CTLTYPE_IPSTAT:
         case CTLTYPE_NFSRVSTATS:

@@ -25,11 +25,6 @@ while (<DATA>) {
 open my $out_h,  '>', 'bsd-sysctl.h'  or die "Cannot open C header for output: $!\n";
 open my $out_pl, '>', 'bsd-sysctl.ph' or die "Cannot open Perl header for output: $!\n";
 
-# bootinfo.h header file not available on the AMD64 platform
-if (-r '/usr/include/machine/bootinfo.h') {
-    print $out_h "#include <machine/bootinfo.h>\n";
-}
-
 open my $in_sys, '<', '/usr/include/sys/sysctl.h' or die "Cannot open sys/sysctl.h: $!\n";
 
 while (<$in_sys>) {
@@ -77,7 +72,6 @@ __DATA__
 #  -- bsd-sysctl.h (#defines for Sysctl.xs)
 #  -- bsd-sysctl.ph (use constants for Sysctl.pm)
 
-bootinfo
 clockinfo
 devstat
 icmpstat

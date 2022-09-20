@@ -24,7 +24,6 @@
 #include <sys/socketvar.h>    /* struct xinpcb */
 #include <netinet/in_pcb.h>   /* struct xinpcb */
 #include <netinet6/raw_ip6.h> /* struct rip6stat */
-#include <machine/bootinfo.h> /* struct bootinfo */
 
 int
 main(int argc, char **argv) {
@@ -40,6 +39,5 @@ main(int argc, char **argv) {
     printf( "sizeof(struct udpstat) = %d\n", sizeof(struct udpstat) );
     printf( "sizeof(struct xinpcb) = %d\n", sizeof(struct xinpcb) );
     printf( "sizeof(struct rip6stat) = %d\n", sizeof(struct rip6stat) );
-    printf( "sizeof(struct bootinfo) = %d\n", sizeof(struct bootinfo) );
     return 0;
 }
